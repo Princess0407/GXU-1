@@ -35,28 +35,41 @@ The ESP32-S3 was chosen specifically because it has a hardware LCD parallel inte
 
 ## system architecture
 
-```
-[Browser / Any WiFi Device]
-        |
-   WebSocket (WiFi)
-        |
-[Core 0 -- Command Processor]
-  WiFi stack, WebSocket server,
-  ISA packet decoder, telemetry sender
-        |
-  FreeRTOS Queue (internal bus)
-        |
-[Core 1 -- Rasterizer (GX Core)]
-  ISA executor, line/rect/blit algorithms,
-  VRAM writes, heatmap counters
-        |
-      DMA
-        |
-[8 GPIO pins]
-        |
-[R-2R Resistor DAC]
-        |
-[VGA Monitor]
+```mermaid
+flowchart TD
+    A([browser / python script / any wifi device]) --> B
+    subgraph net["core 0 — command processor"]
+        B[wifi stack + websocket server\nport 8080]
+        C[isa packet decoder\nisa_decode]
+        D[telemetry json sender\nevery 200ms]
+        B --> C
+    end
+
+   C -->|xQueueSend| Q[(freertos queue\ndepth 64)]
+    Q -->|xQueueReceive| E
+
+subgraph gpu["core 1 — gx core / rasterizer"]
+        E[isa executor\nswitch on opcode]
+        F[bresenham line\nrect fill / blit\nbitmap text]
+        G[vram\n320x240 — 76800 bytes]
+        H[tile heatmap\n16x12 counters]
+        E --> F
+        F --> G
+        F --> H
+    end
+
+ G -->|dma — 25.175 mhz| I[8 gpio pins\nlcd parallel bus]
+    H -->|read every 200ms| D
+    D -->|websocket telemetry| A
+
+I --> J[r-2r resistor ladder dac\n270ohm + 560ohm — 35 inr]
+    J --> K([vga monitor\n320x240 at 60hz\nanalog rgb + hsync + vsync])
+
+style net fill:#f0ece4,stroke:#c0bbb0,color:#1a1814
+    style gpu fill:#ebf4f0,stroke:#aacfc4,color:#1a1814
+    style Q fill:#1a1814,color:#f0ece4,stroke:#1a1814
+    style K fill:#c0392b,color:#fff,stroke:#c0392b
+    style A fill:#1a1814,color:#f0ece4,stroke:#1a1814
 ```
 
 ## dashboard
