@@ -505,11 +505,11 @@ The answer is pretty much simple. A display controller would want you to do all 
 </p>
 
 <p>
-  Another mistake was assuming debugging would be straightforward. Software usually gives you logs, stack traces and error messages. VGA gives you a screen full of nonsense and expects you to become a detective. More than once I spent hours staring at rendering code only to discover that the real problem was a timing configuration or a GPIO assignment somewhere else.
+  Another mistake was assuming debugging would be pretty straightforward...software usually gives you logs, stack traces and error messages on the other hand VGA gives you a screen full of god knows what kind of mess on the screen and expects you to become a detective. I'm not kidding when I say I literally spent hours staring at rendering code only to find out it was that a timing configuration or a GPIO assignment at someplace.
 </p>
 
 <p>
-  And perhaps the most important lesson was that building something from scratch forces you to understand where every abstraction comes from. Before GXU-1, a framebuffer was just a term I had read in documentation. DMA was just another peripheral in the ESP32 datasheet. Rasterization was just something GPUs magically did. After building this, every one of those concepts feels a lot more real.
+  And, he mosttt important lesson was that building something from sratch to understand where every abstraction comes from. 
 </p>
 
   <div class="divider"></div>
