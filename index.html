@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>how I built a GPU from a bunch of resistors...</title>
+<title><h1>how I built a GPU from resistors...</h1></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/latin-modern-roman/index.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -269,7 +269,6 @@
 
 
 <main class="container post-body">
- 
 
   <p>
     This started as a question I could not stop wondering about. Most of the modern IoT devices collect data and report it....they don't compute and they definitely don't render graphics. And if you want a display output on an embedded system, you are basically forced to buy a dedicated display controller IC, an HDMI driver and what nots that shows you exactly nothing interesting at exactly nothing interesting resolution.
@@ -408,7 +407,7 @@ The answer is pretty much simple. A display controller would want you to do all 
     The DMA hardware streams VRAM to GPIO pins continuously, completely independent of both cores. This means a burst of incoming WiFi packets on Core 0 never causes display flicker, and a heavy rendering operation on Core 1 never delays network responses. The queue absorbs any burst with 64-command depth.
   </p>
 
-  <h2>End to end latency</h2>
+  <h2>End-to-end latency</h2>
 
   <p>
     From clicking a button in the browser dashboard to a pixel appearing on the VGA monitor,here is how time passes through each stage.
@@ -506,11 +505,11 @@ The answer is pretty much simple. A display controller would want you to do all 
 </p>
 
 <p>
-  Another mistake was assuming debugging would be pretty straightforward...software usually gives you logs, stack traces and error messages on the other hand VGA gives you a screen full of god knows what kind of mess on the screen and expects you to become a detective. I'm not kidding when I say I literally spent hours staring at rendering code only to find out it was that a timing configuration or a GPIO assignment at someplace.
+  Another mistake was assuming debugging would be straightforward. Software usually gives you logs, stack traces and error messages. VGA gives you a screen full of nonsense and expects you to become a detective. More than once I spent hours staring at rendering code only to discover that the real problem was a timing configuration or a GPIO assignment somewhere else.
 </p>
 
 <p>
-  And, he mosttt important lesson was that building something from sratch to understand where every abstraction comes from. 
+  And perhaps the most important lesson was that building something from scratch forces you to understand where every abstraction comes from. Before GXU-1, a framebuffer was just a term I had read in documentation. DMA was just another peripheral in the ESP32 datasheet. Rasterization was just something GPUs magically did. After building this, every one of those concepts feels a lot more real.
 </p>
 
   <div class="divider"></div>
@@ -518,7 +517,7 @@ The answer is pretty much simple. A display controller would want you to do all 
   <h2>Try the software emulator</h2>
 
   <p>
-    If you do not have the hardware, fret not.......the complete GXU 1 ISA is implemented in a browser based emulator using the Canvas API. It includes the VRAM heatmap, live telemetry, and a raw hex input where you can type ISA packets directly. To draw a red or any color diagonal line from corner to corner, type:
+    If you do not have the hardware, the complete GXU-1 ISA is implemented in a browser-based emulator using the Canvas API. It includes the VRAM heatmap, live telemetry, and a raw hex input where you can type ISA packets directly. To draw a red diagonal line from corner to corner, type:
   </p>
 
   <pre><code>03 00 00 00 F0 01 3F 00 EF 0C</code></pre>
@@ -534,7 +533,7 @@ The answer is pretty much simple. A display controller would want you to do all 
   <h2>Source and docs</h2>
 
   <p>
-    Full firmware, dashboard source, wiring guide, ISA reference, and build instructions are present on GitHub README.
+    Full firmware, dashboard source, wiring guide, ISA reference, and build instructions are on GitHub README.
   </p>
 
   <a href="https://github.com/Princess0407/GXU-1" class="demo-link">view on GitHub</a>
