@@ -298,30 +298,40 @@
   </p>
 
   <p>
-    So, the standard solution to that would be to use a DAC however, we are using a resistor ladder.
+    So, the standard solution to that would be to use a DAC however, we are using a resistor ladder...
   </p>
 
   <p>
-    An R-2R resistor ladder uses only two resistor values arranged in a repeating pattern to convert digital bits into proportional analog voltages. For GXU-1, each color channel gets 2 bits, giving 4 voltage levels per channel, 64 total colors. The whole DAC uses 18 resistors at 270 ohms and 9 at 560 ohms. Total cost: 35 rupees.
+  Well, first of all, because I wasn't really willing to spend more money on a dedicated DAC when I already had a pile of resistors lying around. Secondly, this project was kinda built around the idea of seeing how far could a microcontroller pushed with the most questionable hardware choices possible. And, in case you dont have resistors lying around, it'll cost you around 35 rupees that is roughly 0.3 dollars.
   </p>
+<p>For GXU-1, each color channel gets 2 bits. Which means red gets 4 possible intensity levels, green gets 4, and blue gets 4. Combine all the three together and we end up with 64 possible colors on screen. Not exactly ray tracing territory from your traditional GPUs, but definitely enough to draw shapes, text, and make the monitor look like something.......is happening.
 
+When the ESP32 outputs a binary value, the resistor ladder turns that pattern of 1s and 0s into a proportional analog voltage....Sooo, instead of the monitor only seeing "fully on" or "fully off", it sees different voltage levels corresponding to different color intensities.</p>
+
+ <p>For example...a value of 00 produces essentially 0V, 01 gives a low voltage level, 10 gives a higher one, and 11 pushes it close to the maximum VGA color voltage. The monitor just doesn't care that a bunch of resistors are doing all the heavy work behind the scenes. It just sees valid analog color signals and happily displays them!!</p>
+
+ 
   <div class="chart-wrap">
-    <div class="chart-title">R-2R DAC output voltages per 2-bit value</div>
+    <div class="chart-title">R2R DAC output voltages per 2-bit value</div>
     <canvas id="dacChart" class="chart" height="220"></canvas>
   </div>
 
   <p>
-    The ESP32-S3 was chosen specifically because it has a hardware LCD parallel interface. This lets the DMA controller drive all 8 GPIO pins simultaneously in sync with VGA timing at 25.175 MHz, without any CPU involvement. The original ESP32 and ESP32-C3 do not have this peripheral. It is the only reason 60Hz is achievable.
+    The ESP32-S3 was chosen 'cause it has a hardware LCD parallel interface which lets the DMA controller drive all 8 GPIO pins simultaneously in sync with VGA timing at 25.175 MHz, without any CPU involvement anytime.This became the only reason 60Hz is was achievable.
   </p>
 
   <h2>The instruction set</h2>
 
   <p>
-    The thing that makes GXU-1 a GPU instead of a display controller is the ISA. A display controller takes pixels and outputs them. A GPU takes drawing commands, figures out which pixels correspond to those commands, and writes them to the framebuffer. That process is rasterization, and it requires a defined command language.
+  You also might have been thinking what makes this an actual GPU and not your fancy display driver.
+
+The answer is pretty much simple. A display controller would want you to do all the hard work and hand them final pixels. GXU 1 doesn't.......you command it what you want drawn, and it figures out which pixels need to change....this particualr conversion from shapes and commands into actual pixels is called rasterization, and for that to happen we need to talk to the hardware that is where....ISA enters the scene.
+
   </p>
 
   <p>
-    GXU-1 has 8 opcodes. Every packet starts with a 1-byte opcode, followed by arguments encoded as 16-bit big-endian unsigned integers. Color is a single byte with 2 bits per channel.
+ GXU 1 totally has 8 opcodes. Every packet starts with a 1 byte opcode, followed by arguments encoded as 16 bit "big endian unsigned" integers...which just means bigger numbers use two bytes and the larger half gets sent first. Also, since I'm not planning on drawing rectangles at negative coordinates, all the bits can be used for positive values. Color gets a single byte with 2 bits each for red, green and blue.
+
   </p>
 
   <table class="spec-table">
@@ -341,7 +351,7 @@
   </table>
 
   <p>
-    The choice of binary encoding over something like JSON is not aesthetic. It is a performance requirement. Here is the actual comparison for a single line command:
+    The choice of binary encoding over something like JSON isn't just for aesthetics...it was the performance I wanted. Here is the actual comparison for a single line command in case, you are wondering:
   </p>
 
   <div class="chart-wrap">
@@ -350,17 +360,17 @@
   </div>
 
   <p>
-    A JSON-encoded line command is about 58 bytes and takes several hundred microseconds to parse. The binary packet is 10 bytes and parses in under 5 microseconds. At the framerate GXU-1 targets, that difference is the gap between working and not working.
+    A JSON encoded line command costs about 58 bytes and takes several hundred microseconds to parse.....and, thiss becomes crucial when you wanna process hundreds or even thousands of drawing commands every sec.
   </p>
+ <p>If you come to think about it....every rectangle, every line, every piece of text eventually becomes a command that GXU 1 has to understand before it can draw anything..which is a huge deal when GXU has to read an array of curly braces, quoatation marks and so on EVERY SINGLE TIME. The ESP32 would have had to spend more time in understanding what I meant rather than drawing it on screen.</p>
+<p>And honestly, this is one of those moments where human readability has to take a step down...sure, JSON is easier for us to look at, but GXU 1 isn't really built for us. It's built for moving commands from point A to point B as quickly as possible. At the framerate I was targeting, those extra bytes and microseconds add up surprisingly fast than someone would expect it to. </p>
 
-  <h2>The dual-core architecture</h2>
+ <p> The difference between the two is not just some benchmark number I can throw into a graph and boast off it. It's quite literally the difference between spending your time drawing pixels and spending your time reading text about drawing pixels.</p>
+ 
+   <h2>The dual core architecture</h2>
 
   <p>
-    Most microcontroller projects run everything on one core. WiFi, computation, display output, all sharing the same CPU time. This is why IoT devices stutter when they are busy doing anything non-trivial.
-  </p>
-
-  <p>
-    GXU-1 splits responsibilities hard across the two cores of the ESP32-S3. Core 0 and Core 1 never touch each other's domain. The only thing connecting them is a FreeRTOS queue that acts as the internal command bus.
+    To prevent microcontroller from smoking.....GXU 1 splits responsibilities hard across the two cores of the ESP32 S3. Core 0 and Core 1 where they never touch each other's domain. The only thing connecting them is a FreeRTOS queue that acts as the internal command bus. Check out the arch below:
   </p>
 
   <div class="arch-diagram"><span class="hl">[Browser / Python script / any WiFi device]</span>
@@ -400,7 +410,7 @@
   <h2>End-to-end latency</h2>
 
   <p>
-    From clicking a button in the browser dashboard to a pixel appearing on the VGA monitor, here is where the time actually goes:
+    From clicking a button in the browser dashboard to a pixel appearing on the VGA monitor,here is how time passes through each stage.
   </p>
 
   <div style="margin:1.5rem 0 2.5rem">
@@ -432,7 +442,7 @@
   </div>
 
   <p>
-    Total perceived latency is somewhere between 10ms and 25ms. The human eye stops noticing delays below about 100ms for display feedback, so this is comfortably imperceptible.
+    Total perceived latency is somewhere between 10ms and 25ms....the point being the human eye usually can't percieve delays below about 100ms for display feedback, so this is comfortably imperceptible.
   </p>
 
   <h2>The VRAM heatmap</h2>
@@ -442,7 +452,7 @@
   </p>
 
   <p>
-    The dashboard renders them as a color grid: cold tiles are dark blue, warm tiles shift through green, hot tiles go amber and red. AMD's Radeon GPU Profiler shows the exact same visualization for production GPU workloads. GXU-1 runs the same concept on a 450-rupee chip.
+    The dashboard renders them as a color grid...cold tiles are dark blue, warm tiles shift through green, hot tiles go amber and red. AMD's Radeon GPU Profiler shows the exact same visualization for production GPU workloads. GXU 1 runs the same concept on an inexpensive chip!!
   </p>
 
   <div class="chart-wrap">
@@ -450,7 +460,7 @@
     <canvas id="throughputChart" class="chart" height="250"></canvas>
   </div>
 
-  <h2>Bill of materials</h2>
+  <h2>BOM</h2>
 
   <p>
     Everything here is available in India. Robu.in and Probots stock the ESP32-S3. Resistors come from any local electronics market.
@@ -476,23 +486,31 @@
     <canvas id="bomChart" class="chart" height="260"></canvas>
   </div>
 
-  <h2>What I actually learned</h2>
+  <h2>here's what I actually learned and also mistakes I made...</h2>
 
-  <p>
-    The resistor ladder is the part that surprised me most. I knew the theory but building it and then measuring the voltage with a multimeter and seeing exactly 0.35V where the math said 0.35V should be is a genuinely satisfying thing. Physics is consistent, it turns out.
+  <p> The resistor ladder is the part that surprised me most...I did knew the theory I learnt in my classes but building it and then measuring the voltage with a multimeter and seeing exactly 0.35V where the math said 0.35V was a satisfying moment.
   </p>
 
-  <p>
-    The DMA timing took the longest to get right. The VGA standard has very specific timing requirements around the horizontal and vertical porch periods, the sync pulse widths, the pixel clock. Getting the LCD peripheral configured with the correct values took a lot of trial and error. If the display shows white noise, the porch values are wrong. If colors are shifted, the GPIO assignment is wrong. If the image tears, the sync is off. Each symptom points to exactly one thing.
+  <p>The DMA timing took the longesttttt to get it right.....the VGA standard has very specific timing requirements around the horizontal and vertical porch periods, the sync pulse widths, the pixel clock...getting the LCD peripheral configured with the correct values took a lot of trial and error. If the display shows white noise, the porch values are wrong. If colors are shifted, the GPIO assignment is wrong. If the image tears, the sync is off.....each symptom pointed at exactly one thing.
   </p>
 
-  <p>
-    The FreeRTOS queue architecture taught me more about real-time systems than any course would have. The decision to put WiFi and rendering on separate cores with a defined inter-core communication channel is the same decision that CPU-GPU interface designers make, just at a different scale. Core 0 is the CPU, Core 1 is the GPU, the queue is the PCIe bus. The concepts are identical.
+  <p>The FreeRTOS queue architecture taught me more about real time systems than I understood from any lecture or video ever...the decision to put wifi and rendering on separate cores with a defined communication channel is the same decision that CPU GPU interface designers make, just at a larger scale. 
   </p>
 
-  <p>
-    And the ISA design itself was the most interesting part. Every decision compounds: binary vs text, big vs little endian, 2-bit vs 4-bit color channels, packet size vs expressiveness. Real GPU ISA designers make the same tradeoffs at much higher stakes. Working through them at this scale makes it clear why the decisions they made are the ones they made.
+  <p>Designing the ISA was the most interesting part but also, made me cry sometimes......many decisons were taken which compounds; binary vs text, big vs little endian, 2-bit vs 4-bit color channels, packet size vs expressiveness...its just real GPU ISA designers play the same game at higher stakes.
   </p>
+ 
+<p>
+  As for mistakes uhmm...there were plenty...uhh the biggest one was underestimating how much planning graphics systems actually need. I kinda like went in with "I'll get VGA running first and figure everything else out later" which turned out to be a bad one(awkward laugh) its just that every bad decision affects your next ten decisons sooo, you gotta be careful.A lot of redesigns could have been easily avoided if I had spent more time with a notebook or brainstorming really before touching any code.
+</p>
+
+<p>
+  Another mistake was assuming debugging would be straightforward. Software usually gives you logs, stack traces and error messages. VGA gives you a screen full of nonsense and expects you to become a detective. More than once I spent hours staring at rendering code only to discover that the real problem was a timing configuration or a GPIO assignment somewhere else.
+</p>
+
+<p>
+  And perhaps the most important lesson was that building something from scratch forces you to understand where every abstraction comes from. Before GXU-1, a framebuffer was just a term I had read in documentation. DMA was just another peripheral in the ESP32 datasheet. Rasterization was just something GPUs magically did. After building this, every one of those concepts feels a lot more real.
+</p>
 
   <div class="divider"></div>
 
@@ -508,7 +526,7 @@
     That is opcode 0x03 (GXU_LINE), x0=0, y0=240, x1=319, y1=239, color=0x0C (red). Hit execute and watch it rasterize.
   </p>
 
-  <a href="https://your-github-pages-link/emulator" class="demo-link">open the emulator</a>
+  <a href="https://princess0407.github.io/GXU-1/emulator.html" class="demo-link">open the emulator</a>
 
   <div class="divider"></div>
 
@@ -518,7 +536,7 @@
     Full firmware, dashboard source, wiring guide, ISA reference, and build instructions are on GitHub. The complete project report covers everything from the R-2R ladder math to the VGA timing registers to the 3-minute demo script for the IoT competition.
   </p>
 
-  <a href="https://princess0407.github.io/GXU-1/" class="demo-link">view on GitHub</a>
+  <a href="https://github.com/Princess0407/GXU-1" class="demo-link">view on GitHub</a>
 
   <div class="footnote">
     <p>GXU-1 was built for an IoT competition as an ECE undergraduate project. The complete BOM is under 700 INR. The VGA monitor was borrowed from the college lab.</p>
@@ -536,7 +554,7 @@ Chart.defaults.font.family = "'DM Sans', sans-serif";
 Chart.defaults.color = '#6b6560';
 Chart.defaults.borderColor = '#e0dbd2';
 
-// Chart 1: Concept comparison (horizontal bar)
+// conceptual comparison 
 new Chart(document.getElementById('conceptChart'), {
   type: 'bar',
   data: {
@@ -587,7 +605,7 @@ new Chart(document.getElementById('conceptChart'), {
   }
 });
 
-// Chart 2: DAC voltages
+// dac voltages
 new Chart(document.getElementById('dacChart'), {
   type: 'bar',
   data: {
@@ -614,7 +632,7 @@ new Chart(document.getElementById('dacChart'), {
   }
 });
 
-// Chart 3: Packet size comparison
+// packet size comparison
 new Chart(document.getElementById('packetChart'), {
   type: 'bar',
   data: {
@@ -648,7 +666,7 @@ new Chart(document.getElementById('packetChart'), {
   }
 });
 
-// Chart 4: Latency breakdown (stacked)
+// latency breakdown 
 new Chart(document.getElementById('latencyChart'), {
   type: 'bar',
   data: {
@@ -674,7 +692,7 @@ new Chart(document.getElementById('latencyChart'), {
   }
 });
 
-// Chart 5: Throughput by operation
+//Throughput by operation
 new Chart(document.getElementById('throughputChart'), {
   type: 'bar',
   data: {
@@ -701,7 +719,7 @@ new Chart(document.getElementById('throughputChart'), {
   }
 });
 
-// Chart 6: BOM cost pie
+// the cost pie
 new Chart(document.getElementById('bomChart'), {
   type: 'doughnut',
   data: {
