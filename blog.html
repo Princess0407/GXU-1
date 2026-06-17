@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GXU-1: I built a GPU from resistors</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --ink:#1a1814;
+    --ink-muted:#6b6560;
+    --ink-faint:#b0ada8;
+    --cream:#faf8f4;
+    --cream-dark:#f0ece4;
+    --accent:#c0392b;
+    --accent-light:#f9eceb;
+    --mono:#2c5f4a;
+    --border:#e0dbd2;
+  }
+  html{font-size:18px}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Lora',Georgia,serif;
+    line-height:1.8;
+    padding:0;
+  }
+
+  .site-header{
+    padding:2.5rem 0 2rem;
+    border-bottom:1px solid var(--border);
+    text-align:center;
+  }
+  .site-header .label{
+    font-family:'DM Sans',sans-serif;
+    font-size:0.65rem;
+    font-weight:500;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    margin-bottom:1.2rem;
+  }
+  h1{
+    font-size:2.6rem;
+    font-weight:600;
+    line-height:1.15;
+    letter-spacing:-0.02em;
+    max-width:720px;
+    margin:0 auto 1rem;
+  }
+  h1 span{color:var(--accent)}
+  .byline{
+    font-family:'DM Sans',sans-serif;
+    font-size:0.8rem;
+    color:var(--ink-muted);
+    font-weight:300;
+  }
+
+  .container{
+    max-width:740px;
+    margin:0 auto;
+    padding:0 1.5rem;
+  }
+
+  .post-body{
+    padding:3rem 0 5rem;
+  }
+
+  p{margin-bottom:1.4rem}
+
+  h2{
+    font-size:1.45rem;
+    font-weight:600;
+    margin:3.5rem 0 1rem;
+    letter-spacing:-0.01em;
+    color:var(--ink);
+  }
+  h3{
+    font-family:'DM Sans',sans-serif;
+    font-size:0.95rem;
+    font-weight:500;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    margin:2.5rem 0 0.8rem;
+  }
+
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent)}
+  a:hover{opacity:0.75}
+
+  code{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.78rem;
+    background:var(--cream-dark);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 6px;
+    color:var(--mono);
+  }
+
+  pre{
+    background:var(--ink);
+    color:#e8e4dc;
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.75rem;
+    line-height:1.7;
+    padding:1.5rem;
+    border-radius:8px;
+    overflow-x:auto;
+    margin:1.5rem 0 2rem;
+  }
+  pre code{
+    background:none;
+    border:none;
+    padding:0;
+    color:inherit;
+    font-size:inherit;
+  }
+
+  .callout{
+    background:var(--accent-light);
+    border-left:3px solid var(--accent);
+    border-radius:0 6px 6px 0;
+    padding:1.1rem 1.4rem;
+    margin:2rem 0;
+    font-size:0.9rem;
+  }
+  .callout p{margin:0}
+
+  .chart-wrap{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:1.5rem;
+    margin:2rem 0;
+  }
+  .chart-title{
+    font-family:'DM Sans',sans-serif;
+    font-size:0.75rem;
+    font-weight:500;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    margin-bottom:1rem;
+  }
+  canvas.chart{width:100%!important}
+
+  .spec-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:1.5rem 0 2rem;
+    font-size:0.85rem;
+  }
+  .spec-table th{
+    font-family:'DM Sans',sans-serif;
+    font-size:0.7rem;
+    font-weight:500;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    text-align:left;
+    padding:0.5rem 0.8rem;
+    border-bottom:2px solid var(--border);
+  }
+  .spec-table td{
+    padding:0.6rem 0.8rem;
+    border-bottom:1px solid var(--border);
+    line-height:1.5;
+    font-family:'DM Sans',sans-serif;
+  }
+  .spec-table tr:last-child td{border:none}
+  .spec-table td:first-child{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.78rem;
+    color:var(--mono);
+  }
+
+  .bom-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:1.5rem 0 2rem;
+    font-size:0.85rem;
+    font-family:'DM Sans',sans-serif;
+  }
+  .bom-table th{
+    font-size:0.7rem;
+    font-weight:500;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    text-align:left;
+    padding:0.5rem 0.8rem;
+    border-bottom:2px solid var(--border);
+  }
+  .bom-table td{padding:0.55rem 0.8rem;border-bottom:1px solid var(--border)}
+  .bom-table tr:last-child td{border:none;font-weight:500}
+  .bom-table .price{text-align:right}
+
+  .arch-diagram{
+    background:var(--ink);
+    color:#d4cfca;
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.72rem;
+    line-height:1.9;
+    padding:1.8rem;
+    border-radius:8px;
+    margin:1.5rem 0 2rem;
+    white-space:pre;
+    overflow-x:auto;
+  }
+  .arch-diagram .hl{color:#e8b86d}
+  .arch-diagram .dim{color:#5a564f}
+
+  .latency-bar{
+    display:flex;
+    align-items:center;
+    gap:0.8rem;
+    margin:0.5rem 0;
+    font-family:'DM Sans',sans-serif;
+    font-size:0.82rem;
+  }
+  .latency-label{width:160px;color:var(--ink-muted);flex-shrink:0}
+  .latency-track{flex:1;background:var(--cream-dark);border-radius:4px;height:22px;overflow:hidden}
+  .latency-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:#fff}
+  .latency-val{color:var(--ink-muted);min-width:40px;text-align:right}
+
+  .divider{
+    width:60px;height:2px;
+    background:var(--accent);
+    margin:4rem auto;
+    border-radius:2px;
+  }
+
+  .footnote{
+    font-size:0.78rem;
+    color:var(--ink-muted);
+    font-family:'DM Sans',sans-serif;
+    border-top:1px solid var(--border);
+    padding-top:1.5rem;
+    margin-top:4rem;
+  }
+
+  .demo-link{
+    display:inline-block;
+    background:var(--ink);
+    color:var(--cream);
+    font-family:'DM Sans',sans-serif;
+    font-size:0.82rem;
+    font-weight:500;
+    padding:0.7rem 1.4rem;
+    border-radius:6px;
+    border:none;
+    margin-top:0.5rem;
+    letter-spacing:0.02em;
+  }
+  .demo-link:hover{opacity:0.85;color:var(--cream)}
+
+  @media(max-width:600px){
+    html{font-size:16px}
+    h1{font-size:2rem}
+    .latency-label{width:110px}
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <div class="label">project writeup</div>
+    <h1>I built a <span>GPU</span> from resistors for 700 rupees</h1>
+    <p class="byline">Priyanka Tiwari &nbsp;|&nbsp; GXU-1: Graphics Execution Unit, Revision 1</p>
+  </div>
+</header>
+
+<main class="container post-body">
+
+  <p>
+    This started as a question I could not stop thinking about. Modern IoT devices collect data and report it. They do not compute. They definitely do not render graphics. And if you want a display output on an embedded system, you are basically forced to buy a dedicated display controller IC, an HDMI driver, or a tiny SPI LCD that shows you exactly nothing interesting at exactly nothing interesting resolution.
+  </p>
+
+  <p>
+    I wanted to know if you could skip all of that. Could you take a microcontroller, some discrete resistors, and build something that genuinely deserves to be called a GPU? Not a display module. Not a framebuffer wrapper. An actual programmable graphics processor with a defined instruction set, a rasterizer, and network-addressable command bus.
+  </p>
+
+  <p>
+    GXU-1 is the answer. It drives a standard VGA monitor at 320x240 at 60Hz, executes a custom 8-opcode binary ISA sent over WiFi, and costs under 700 rupees in components. Here is how it works.
+  </p>
+
+  <div class="callout">
+    <p>Before anything else: the architecture comparison that motivated the whole thing.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">GXU-1 vs RTX 4090: same concept, different scale</div>
+    <canvas id="conceptChart" class="chart" height="280"></canvas>
+  </div>
+
+  <h2>The hardware problem</h2>
+
+  <p>
+    VGA is an analog standard from 1987. Your monitor expects three analog voltage signals (Red, Green, Blue) between 0V and 0.7V, plus two digital sync pulses that tell it when each line ends and when each frame ends. The problem is that a microcontroller only outputs digital signals: 0V or 3.3V. Nothing in between.
+  </p>
+
+  <p>
+    The standard solution is a DAC chip. The GXU-1 solution is a resistor ladder.
+  </p>
+
+  <p>
+    An R-2R resistor ladder uses only two resistor values arranged in a repeating pattern to convert digital bits into proportional analog voltages. For GXU-1, each color channel gets 2 bits, giving 4 voltage levels per channel, 64 total colors. The whole DAC uses 18 resistors at 270 ohms and 9 at 560 ohms. Total cost: 35 rupees.
+  </p>
+
+  <div class="chart-wrap">
+    <div class="chart-title">R-2R DAC output voltages per 2-bit value</div>
+    <canvas id="dacChart" class="chart" height="220"></canvas>
+  </div>
+
+  <p>
+    The ESP32-S3 was chosen specifically because it has a hardware LCD parallel interface. This lets the DMA controller drive all 8 GPIO pins simultaneously in sync with VGA timing at 25.175 MHz, without any CPU involvement. The original ESP32 and ESP32-C3 do not have this peripheral. It is the only reason 60Hz is achievable.
+  </p>
+
+  <h2>The instruction set</h2>
+
+  <p>
+    The thing that makes GXU-1 a GPU instead of a display controller is the ISA. A display controller takes pixels and outputs them. A GPU takes drawing commands, figures out which pixels correspond to those commands, and writes them to the framebuffer. That process is rasterization, and it requires a defined command language.
+  </p>
+
+  <p>
+    GXU-1 has 8 opcodes. Every packet starts with a 1-byte opcode, followed by arguments encoded as 16-bit big-endian unsigned integers. Color is a single byte with 2 bits per channel.
+  </p>
+
+  <table class="spec-table">
+    <thead>
+      <tr><th>opcode</th><th>mnemonic</th><th>arguments</th><th>what it does</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>0x01</td><td>GXU_CLEAR</td><td>color (1B)</td><td>fill entire 320x240 VRAM</td></tr>
+      <tr><td>0x02</td><td>GXU_PIXEL</td><td>x, y (2B each), color</td><td>set one pixel</td></tr>
+      <tr><td>0x03</td><td>GXU_LINE</td><td>x0, y0, x1, y1 (2B each), color</td><td>Bresenham line</td></tr>
+      <tr><td>0x04</td><td>GXU_RECT_FILL</td><td>x, y, w, h (2B each), color</td><td>filled rectangle</td></tr>
+      <tr><td>0x05</td><td>GXU_RECT_OUTLINE</td><td>x, y, w, h (2B each), color</td><td>hollow rectangle</td></tr>
+      <tr><td>0x06</td><td>GXU_BLIT</td><td>sx, sy, dx, dy, w, h (2B each)</td><td>copy VRAM region</td></tr>
+      <tr><td>0x07</td><td>GXU_TEXT</td><td>x, y, color, N, chars</td><td>render ASCII string</td></tr>
+      <tr><td>0xFF</td><td>GXU_SWAP</td><td>none</td><td>flip double buffer</td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    The choice of binary encoding over something like JSON is not aesthetic. It is a performance requirement. Here is the actual comparison for a single line command:
+  </p>
+
+  <div class="chart-wrap">
+    <div class="chart-title">packet size: binary ISA vs JSON encoding (same command)</div>
+    <canvas id="packetChart" class="chart" height="180"></canvas>
+  </div>
+
+  <p>
+    A JSON-encoded line command is about 58 bytes and takes several hundred microseconds to parse. The binary packet is 10 bytes and parses in under 5 microseconds. At the framerate GXU-1 targets, that difference is the gap between working and not working.
+  </p>
+
+  <h2>The dual-core architecture</h2>
+
+  <p>
+    Most microcontroller projects run everything on one core. WiFi, computation, display output, all sharing the same CPU time. This is why IoT devices stutter when they are busy doing anything non-trivial.
+  </p>
+
+  <p>
+    GXU-1 splits responsibilities hard across the two cores of the ESP32-S3. Core 0 and Core 1 never touch each other's domain. The only thing connecting them is a FreeRTOS queue that acts as the internal command bus.
+  </p>
+
+  <div class="arch-diagram"><span class="hl">[Browser / Python script / any WiFi device]</span>
+          |
+     WebSocket over WiFi
+          |
+<span class="hl">[Core 0 -- Command Processor]</span>
+  WiFi stack + WebSocket server
+  ISA packet decoder (isa_decode)
+  FreeRTOS queue writer
+  Telemetry JSON sender (200ms interval)
+          |
+  <span class="dim">xQueueSend(gxu_queue, &cmd)</span>
+          |
+<span class="hl">[Core 1 -- GX Core (Rasterizer)]</span>
+  FreeRTOS queue reader
+  Bresenham line, rect fill, blit algorithms
+  VRAM writes (76800 byte framebuffer)
+  Tile heatmap counters (16x12 grid)
+          |
+         DMA
+          |
+<span class="hl">[8 GPIO pins -- LCD parallel bus]</span>
+          |
+<span class="hl">[R-2R Resistor DAC]</span>
+  270 ohm + 560 ohm resistor ladder
+  0V to 0.7V analog per channel
+          |
+<span class="hl">[VGA Monitor]</span>
+  320x240 at 60Hz
+  analog RGB + H-Sync + V-Sync</div>
+
+  <p>
+    The DMA hardware streams VRAM to GPIO pins continuously, completely independent of both cores. This means a burst of incoming WiFi packets on Core 0 never causes display flicker, and a heavy rendering operation on Core 1 never delays network responses. The queue absorbs any burst with 64-command depth.
+  </p>
+
+  <h2>End-to-end latency</h2>
+
+  <p>
+    From clicking a button in the browser dashboard to a pixel appearing on the VGA monitor, here is where the time actually goes:
+  </p>
+
+  <div style="margin:1.5rem 0 2.5rem">
+    <div class="latency-bar">
+      <div class="latency-label">browser click to WiFi</div>
+      <div class="latency-track"><div class="latency-fill" style="width:25%;background:#c0392b">5ms</div></div>
+      <div class="latency-val">5ms</div>
+    </div>
+    <div class="latency-bar">
+      <div class="latency-label">Core 0 decode + queue</div>
+      <div class="latency-track"><div class="latency-fill" style="width:5%;background:#e67e22">1ms</div></div>
+      <div class="latency-val">less than 1ms</div>
+    </div>
+    <div class="latency-bar">
+      <div class="latency-label">Core 1 rasterize line</div>
+      <div class="latency-track"><div class="latency-fill" style="width:15%;background:#d35400">3ms</div></div>
+      <div class="latency-val">3ms</div>
+    </div>
+    <div class="latency-bar">
+      <div class="latency-label">DMA to display</div>
+      <div class="latency-track"><div class="latency-fill" style="width:80%;background:#2c5f4a">next frame, max 16ms</div></div>
+      <div class="latency-val">16ms</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">end-to-end latency breakdown (ms)</div>
+    <canvas id="latencyChart" class="chart" height="200"></canvas>
+  </div>
+
+  <p>
+    Total perceived latency is somewhere between 10ms and 25ms. The human eye stops noticing delays below about 100ms for display feedback, so this is comfortably imperceptible.
+  </p>
+
+  <h2>The VRAM heatmap</h2>
+
+  <p>
+    Every time Core 1 writes a pixel, it increments a counter for the tile that pixel falls in. The 320x240 screen is divided into 192 tiles (16 columns by 12 rows, each tile is 20x20 pixels). Core 0 reads these counters every 200ms and includes them in the telemetry JSON it sends back to the browser.
+  </p>
+
+  <p>
+    The dashboard renders them as a color grid: cold tiles are dark blue, warm tiles shift through green, hot tiles go amber and red. AMD's Radeon GPU Profiler shows the exact same visualization for production GPU workloads. GXU-1 runs the same concept on a 450-rupee chip.
+  </p>
+
+  <div class="chart-wrap">
+    <div class="chart-title">pixel throughput at different operations (pixels per second)</div>
+    <canvas id="throughputChart" class="chart" height="250"></canvas>
+  </div>
+
+  <h2>Bill of materials</h2>
+
+  <p>
+    Everything here is available in India. Robu.in and Probots stock the ESP32-S3. Resistors come from any local electronics market.
+  </p>
+
+  <table class="bom-table">
+    <thead>
+      <tr><th>component</th><th>specification</th><th class="price">cost (INR)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>ESP32-S3-DevKitC-1-N8</td><td>8MB Flash, 512KB SRAM, built-in WiFi, LCD peripheral</td><td class="price">450-500</td></tr>
+      <tr><td>Resistors 270 ohm x18</td><td>1/4W carbon film</td><td class="price">20</td></tr>
+      <tr><td>Resistors 560 ohm x9</td><td>1/4W carbon film</td><td class="price">10</td></tr>
+      <tr><td>Resistors 100 ohm x2</td><td>sync signal protection</td><td class="price">5</td></tr>
+      <tr><td>VGA DB-15 connector</td><td>DE-15 breakout or cut VGA cable</td><td class="price">30-50</td></tr>
+      <tr><td>Breadboard + jumper wires</td><td>400-tie half breadboard</td><td class="price">100</td></tr>
+      <tr><td colspan="2">total</td><td class="price">615-685</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart-wrap">
+    <div class="chart-title">BOM cost breakdown by component</div>
+    <canvas id="bomChart" class="chart" height="260"></canvas>
+  </div>
+
+  <h2>What I actually learned</h2>
+
+  <p>
+    The resistor ladder is the part that surprised me most. I knew the theory but building it and then measuring the voltage with a multimeter and seeing exactly 0.35V where the math said 0.35V should be is a genuinely satisfying thing. Physics is consistent, it turns out.
+  </p>
+
+  <p>
+    The DMA timing took the longest to get right. The VGA standard has very specific timing requirements around the horizontal and vertical porch periods, the sync pulse widths, the pixel clock. Getting the LCD peripheral configured with the correct values took a lot of trial and error. If the display shows white noise, the porch values are wrong. If colors are shifted, the GPIO assignment is wrong. If the image tears, the sync is off. Each symptom points to exactly one thing.
+  </p>
+
+  <p>
+    The FreeRTOS queue architecture taught me more about real-time systems than any course would have. The decision to put WiFi and rendering on separate cores with a defined inter-core communication channel is the same decision that CPU-GPU interface designers make, just at a different scale. Core 0 is the CPU, Core 1 is the GPU, the queue is the PCIe bus. The concepts are identical.
+  </p>
+
+  <p>
+    And the ISA design itself was the most interesting part. Every decision compounds: binary vs text, big vs little endian, 2-bit vs 4-bit color channels, packet size vs expressiveness. Real GPU ISA designers make the same tradeoffs at much higher stakes. Working through them at this scale makes it clear why the decisions they made are the ones they made.
+  </p>
+
+  <div class="divider"></div>
+
+  <h2>Try the software emulator</h2>
+
+  <p>
+    If you do not have the hardware, the complete GXU-1 ISA is implemented in a browser-based emulator using the Canvas API. It includes the VRAM heatmap, live telemetry, and a raw hex input where you can type ISA packets directly. To draw a red diagonal line from corner to corner, type:
+  </p>
+
+  <pre><code>03 00 00 00 F0 01 3F 00 EF 0C</code></pre>
+
+  <p>
+    That is opcode 0x03 (GXU_LINE), x0=0, y0=240, x1=319, y1=239, color=0x0C (red). Hit execute and watch it rasterize.
+  </p>
+
+  <a href="https://your-github-pages-link/emulator" class="demo-link">open the emulator</a>
+
+  <div class="divider"></div>
+
+  <h2>Source and docs</h2>
+
+  <p>
+    Full firmware, dashboard source, wiring guide, ISA reference, and build instructions are on GitHub. The complete project report covers everything from the R-2R ladder math to the VGA timing registers to the 3-minute demo script for the IoT competition.
+  </p>
+
+  <a href="https://github.com/yourusername/gxu1" class="demo-link">view on GitHub</a>
+
+  <div class="footnote">
+    <p>GXU-1 was built for an IoT competition as an ECE undergraduate project. The complete BOM is under 700 INR. The VGA monitor was borrowed from the college lab.</p>
+  </div>
+
+</main>
+
+<script>
+const ACCENT = '#c0392b';
+const MONO = '#2c5f4a';
+const INK_FAINT = '#b0ada8';
+const CREAM_DARK = '#f0ece4';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = '#6b6560';
+Chart.defaults.borderColor = '#e0dbd2';
+
+// Chart 1: Concept comparison (horizontal bar)
+new Chart(document.getElementById('conceptChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Drawing API', 'VRAM size', 'DAC cost', 'Color depth', 'Frame rate'],
+    datasets: [
+      {
+        label: 'RTX 4090 (normalized)',
+        data: [100, 100, 100, 100, 100],
+        backgroundColor: '#1a1814',
+        borderRadius: 4,
+      },
+      {
+        label: 'GXU-1',
+        data: [8, 0.1, 0.02, 0.4, 60],
+        backgroundColor: ACCENT,
+        borderRadius: 4,
+      }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const labels = {
+              'Drawing API': ['DirectX / Vulkan', '8-opcode binary ISA'],
+              'VRAM size': ['24 GB GDDR6X', '76,800 bytes SRAM'],
+              'DAC cost': ['Internal RAMDAC IC (~$50)', 'Resistor ladder (35 INR)'],
+              'Color depth': ['32-bit HDR', '6-bit (64 colors)'],
+              'Frame rate': ['240Hz+', '60Hz'],
+            };
+            const feature = ctx.label;
+            return labels[feature][ctx.datasetIndex];
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        display: false,
+        max: 110,
+      },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+// Chart 2: DAC voltages
+new Chart(document.getElementById('dacChart'), {
+  type: 'bar',
+  data: {
+    labels: ['00 (black)', '01 (dark)', '10 (medium)', '11 (full)'],
+    datasets: [{
+      label: 'output voltage (V)',
+      data: [0.00, 0.23, 0.46, 0.70],
+      backgroundColor: ['#1a1814', '#5a564f', '#b0ada8', '#f5f0e8'],
+      borderColor: ['#1a1814', '#5a564f', '#8a8680', '#c0bbb0'],
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        min: 0, max: 0.8,
+        title: { display: true, text: 'Volts' }
+      },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// Chart 3: Packet size comparison
+new Chart(document.getElementById('packetChart'), {
+  type: 'bar',
+  data: {
+    labels: ['GXU-1 binary ISA', 'JSON encoding'],
+    datasets: [{
+      label: 'packet size (bytes)',
+      data: [10, 58],
+      backgroundColor: [MONO, ACCENT],
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          afterLabel: (ctx) => ctx.dataIndex === 0
+            ? 'parse time: under 5 microseconds'
+            : 'parse time: ~500 microseconds'
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'bytes' }
+      },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+// Chart 4: Latency breakdown (stacked)
+new Chart(document.getElementById('latencyChart'), {
+  type: 'bar',
+  data: {
+    labels: ['total path'],
+    datasets: [
+      { label: 'WiFi delivery', data: [5], backgroundColor: '#c0392b', borderRadius: 0 },
+      { label: 'Core 0 decode', data: [1], backgroundColor: '#e67e22', borderRadius: 0 },
+      { label: 'Core 1 rasterize', data: [3], backgroundColor: '#d35400', borderRadius: 0 },
+      { label: 'DMA to display', data: [16], backgroundColor: MONO, borderRadius: 4 },
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: {
+      x: {
+        stacked: true,
+        title: { display: true, text: 'milliseconds' }
+      },
+      y: { stacked: true, grid: { display: false } }
+    }
+  }
+});
+
+// Chart 5: Throughput by operation
+new Chart(document.getElementById('throughputChart'), {
+  type: 'bar',
+  data: {
+    labels: ['GXU_CLEAR', 'GXU_RECT_FILL (full screen)', 'GXU_LINE (diagonal)', 'GXU_RECT_FILL (small)', 'GXU_PIXEL'],
+    datasets: [{
+      label: 'pixels per second',
+      data: [4600000, 3800000, 320000, 180000, 12000],
+      backgroundColor: [MONO, '#1d6e4e', ACCENT, '#e67e22', '#b0ada8'],
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        title: { display: true, text: 'px/s' },
+        ticks: {
+          callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v
+        }
+      },
+      x: { grid: { display: false } }
+    }
+  }
+});
+
+// Chart 6: BOM cost pie
+new Chart(document.getElementById('bomChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['ESP32-S3 chip', 'Resistors (all)', 'VGA connector', 'Breadboard + wires'],
+    datasets: [{
+      data: [475, 35, 40, 100],
+      backgroundColor: ['#1a1814', ACCENT, MONO, '#b0ada8'],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '62%',
+    plugins: {
+      legend: { position: 'right' },
+      tooltip: {
+        callbacks: {
+          label: ctx => ' ' + ctx.label + ': ' + ctx.parsed + ' INR'
+        }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
