@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>how I built a GPU from resistors</title>
+<title>how I built a GPU from resistors...</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -267,45 +267,38 @@
 </head>
 <body>
 
-<header class="site-header">
-  <div class="container">
-    <div class="label">project writeup</div>
-    <h1>I built a <span>GPU</span> from resistors for 700 rupees</h1>
-    <p class="byline">Priyanka Tiwari &nbsp;|&nbsp; GXU-1: Graphics Execution Unit, Revision 1</p>
-  </div>
-</header>
 
 <main class="container post-body">
 
   <p>
-    This started as a question I could not stop thinking about. Modern IoT devices collect data and report it. They do not compute. They definitely do not render graphics. And if you want a display output on an embedded system, you are basically forced to buy a dedicated display controller IC, an HDMI driver, or a tiny SPI LCD that shows you exactly nothing interesting at exactly nothing interesting resolution.
+    This started as a question I could not stop wondering about. Most of the modern IoT devices collect data and report it....they don't compute and they definitely don't render graphics. And if you want a display output on an embedded system, you are basically forced to buy a dedicated display controller IC, an HDMI driver and what nots that shows you exactly nothing interesting at exactly nothing interesting resolution.
   </p>
 
   <p>
-    I wanted to know if you could skip all of that. Could you take a microcontroller, some discrete resistors, and build something that genuinely deserves to be called a GPU? Not a display module. Not a framebuffer wrapper. An actual programmable graphics processor with a defined instruction set, a rasterizer, and network-addressable command bus.
+    I was like lemme take a microcontroller, threw in some resistors, and build something that can be called a GPU?? No it is not just some display module or a framebuffer wrapper.A real programmable graphics processor with a defined instruction set, a rasterizer, and a network addressable command bus.
   </p>
 
   <p>
-    GXU-1 is the answer. It drives a standard VGA monitor at 320x240 at 60Hz, executes a custom 8-opcode binary ISA sent over WiFi, and costs under 700 rupees in components. Here is how it works.
+    (drumroll)!!
   </p>
-
+  <p>Sooo, I made GXU stands for Graphical Execution Unit which drives a standard VGA monitor at 320x240 at 60Hz, executes a custom 8-opcode binary ISA sent over WiFi, and  ykw it costs under 700 rupees in components(after borrowing that VGA monitor from college lab...man had to convince them a lot!!).</p>
   <div class="callout">
-    <p>Before anything else: the architecture comparison that motivated the whole thing.</p>
+    <p>Before anything else let's look at the architecture comparison that drove the whole project</p>
   </div>
 
   <div class="chart-wrap">
-    <div class="chart-title">GXU-1 vs RTX 4090: same concept, different scale</div>
+    <div class="chart-title">GXU 1 vs RTX 4090</div>
     <canvas id="conceptChart" class="chart" height="280"></canvas>
   </div>
 
-  <h2>The hardware problem</h2>
+  <h2>The problematic hardware</h2>
 
   <p>
-    VGA is an analog standard from 1987. Your monitor expects three analog voltage signals (Red, Green, Blue) between 0V and 0.7V, plus two digital sync pulses that tell it when each line ends and when each frame ends. The problem is that a microcontroller only outputs digital signals: 0V or 3.3V. Nothing in between.
+    VGA is an ages old analog standard from 1987.So, basically your monitor expects three analog voltage signals (red, green, blue) between 0V and 0.7V, plus two digital sync pulses that tells it when each line ends and when each frame ends.And, the problem is that a mircrocontroller only outputs digital signals either at 0V or 3.3V :|
   </p>
 
   <p>
-    The standard solution is a DAC chip. The GXU-1 solution is a resistor ladder.
+    So, the standard solution to that would be to use a DAC however, we are using a resistor ladder.
   </p>
 
   <p>
