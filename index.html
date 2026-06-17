@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>how I built a GPU from resistors...</title>
+<title>how I built a GPU from a bunch of resistors...</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/latin-modern-roman/index.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -24,7 +24,7 @@
   body{
     background:var(--cream);
     color:var(--ink);
-    font-family:'Lora',Georgia,serif;
+    font-family:'Latin Modern Roman', serif;
     line-height:1.8;
     padding:0;
   }
@@ -407,7 +407,7 @@ The answer is pretty much simple. A display controller would want you to do all 
     The DMA hardware streams VRAM to GPIO pins continuously, completely independent of both cores. This means a burst of incoming WiFi packets on Core 0 never causes display flicker, and a heavy rendering operation on Core 1 never delays network responses. The queue absorbs any burst with 64-command depth.
   </p>
 
-  <h2>End-to-end latency</h2>
+  <h2>End to end latency</h2>
 
   <p>
     From clicking a button in the browser dashboard to a pixel appearing on the VGA monitor,here is how time passes through each stage.
@@ -517,30 +517,27 @@ The answer is pretty much simple. A display controller would want you to do all 
   <h2>Try the software emulator</h2>
 
   <p>
-    If you do not have the hardware, the complete GXU-1 ISA is implemented in a browser-based emulator using the Canvas API. It includes the VRAM heatmap, live telemetry, and a raw hex input where you can type ISA packets directly. To draw a red diagonal line from corner to corner, type:
+    If you do not have the hardware, fret not.......the complete GXU 1 ISA is implemented in a browser based emulator using the Canvas API. It includes the VRAM heatmap, live telemetry, and a raw hex input where you can type ISA packets directly. To draw a red or any color diagonal line from corner to corner, type:
   </p>
 
   <pre><code>03 00 00 00 F0 01 3F 00 EF 0C</code></pre>
 
   <p>
-    That is opcode 0x03 (GXU_LINE), x0=0, y0=240, x1=319, y1=239, color=0x0C (red). Hit execute and watch it rasterize.
+    That is opcode 0x03 (GXU_LINE), x0=0, y0=240, x1=319, y1=239, color=0x0C (red). Hit execute and watch how it rasterizes.
   </p>
 
-  <a href="https://princess0407.github.io/GXU-1/emulator.html" class="demo-link">open the emulator</a>
+  <a href="https://princess0407.github.io/GXU-1/emulator.html" class="demo-link">emulate it</a>
 
   <div class="divider"></div>
 
   <h2>Source and docs</h2>
 
   <p>
-    Full firmware, dashboard source, wiring guide, ISA reference, and build instructions are on GitHub. The complete project report covers everything from the R-2R ladder math to the VGA timing registers to the 3-minute demo script for the IoT competition.
+    Full firmware, dashboard source, wiring guide, ISA reference, and build instructions are present on GitHub README.
   </p>
 
   <a href="https://github.com/Princess0407/GXU-1" class="demo-link">view on GitHub</a>
 
-  <div class="footnote">
-    <p>GXU-1 was built for an IoT competition as an ECE undergraduate project. The complete BOM is under 700 INR. The VGA monitor was borrowed from the college lab.</p>
-  </div>
 
 </main>
 
