@@ -92,7 +92,7 @@ The React/Vite dashboard runs in a browser on any device connected to the same W
 
 If you do not have the hardware, there is a full browser-based emulator that implements the complete ISA in JavaScript using the Canvas API. It includes the VRAM heatmap, pixel throughput telemetry, and a raw hex input where you can type ISA packets directly and watch them execute.
 
-You can try the emulator here: [gxu-1 software emulator](https://your-github-pages-link)
+You can try the emulator here: [check this out](https://princess0407.github.io/GXU-1/)
 
 ## running the firmware
 
