@@ -543,6 +543,190 @@ The answer is pretty much simple. A display controller would want you to do all 
   <p>pipeline - animates Core 0, Core 1, the FreeRTOS queue, and DMA in sequence every time a command runs, with a description of what each stage is actually doing at that particularmoment</p>
 
   <p>the algorithm trace tab opens automatically when you run a LINE command...</p>
+
+  <p>p.s p.s I forgot to add the a list of hex packets on the emulator..so, I've added that in here</p>
+
+  <h2>Hex packet reference</h2>
+
+<p>If you're using the emulator's raw hex input, here's something that might have confused ya. The color picker on the left does absolutely nothing when you're typing packets manually.
+</p>
+
+<p>In hex mode, the color is already encoded directly inside the packet. The last byte determines what color gets drawn. </p>
+
+<p>
+For example:
+</p>
+
+<pre><code>03 00 00 00 00 01 3F 00 EF 0C</code></pre>
+
+<p>The final byte is <code>0C</code>, which represents red. Change that byte and you'll get a different color without touching anything else in the packet.</p>
+
+<p>GXU 1 uses 2 bits per color channel. The color byte is encoded as:</p>
+
+<pre><code>[B1 B0 G1 G0 R1 R0 xx xx]</code></pre>
+
+<p>
+That gives four intensity levels for red, green and blue, producing a total of 64 possible colors.
+</p>
+
+<table class="spec-table">
+<thead>
+<tr>
+<th>hex</th>
+<th>binary</th>
+<th>red</th>
+<th>green</th>
+<th>blue</th>
+<th>result</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>00</td><td>00000000</td><td>0</td><td>0</td><td>0</td><td>black</td></tr>
+<tr><td>0C</td><td>00001100</td><td>3</td><td>0</td><td>0</td><td>red</td></tr>
+<tr><td>30</td><td>00110000</td><td>0</td><td>3</td><td>0</td><td>green</td></tr>
+<tr><td>C0</td><td>11000000</td><td>0</td><td>0</td><td>3</td><td>blue</td></tr>
+<tr><td>3C</td><td>00111100</td><td>3</td><td>3</td><td>0</td><td>yellow</td></tr>
+<tr><td>F0</td><td>11110000</td><td>0</td><td>3</td><td>3</td><td>cyan</td></tr>
+<tr><td>CC</td><td>11001100</td><td>3</td><td>0</td><td>3</td><td>magenta</td></tr>
+<tr><td>FC</td><td>11111100</td><td>3</td><td>3</td><td>3</td><td>white</td></tr>
+<tr><td>08</td><td>00001000</td><td>2</td><td>0</td><td>0</td><td>dark red</td></tr>
+<tr><td>A8</td><td>10101000</td><td>2</td><td>2</td><td>2</td><td>gray</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+<p>
+Every packet below can be pasted directly into the emulator's raw hex input box.
+</p>
+</div>
+
+<h3>GXU_CLEAR (0x01)</h3>
+
+<p>Clears the entire framebuffer to a single color.</p>
+
+<pre><code>01 FC    clear screen to white
+01 C0    clear screen to blue
+01 00    clear screen to black</code></pre>
+
+<h3>GXU_PIXEL (0x02)</h3>
+
+<p>
+Draws a single pixel.
+</p>
+
+<pre><code>02 [x hi] [x lo] [y hi] [y lo] [color]
+
+02 00 64 00 78 30     pixel at (100,120) green
+02 01 3F 00 EF FC     pixel at (319,239) white
+02 00 00 00 00 0C     pixel at (0,0) red</code></pre>
+
+<h3>GXU_LINE (0x03)</h3>
+
+<p>
+Draws a Bresenham line between two points.
+</p>
+
+<pre><code>03 [x0 hi] [x0 lo] [y0 hi] [y0 lo]
+   [x1 hi] [x1 lo] [y1 hi] [y1 lo]
+   [color]
+
+03 00 00 00 00 01 3F 00 EF 0C
+red diagonal from (0,0) to (319,239)
+
+03 00 00 00 00 01 3F 00 00 30
+green top edge
+
+03 00 00 00 EF 01 3F 00 EF FC
+white bottom edge
+
+03 00 00 00 00 00 00 00 EF C0
+blue left edge
+
+03 01 3F 00 00 01 3F 00 EF F0
+cyan right edge</code></pre>
+
+<h3>GXU_RECT_FILL (0x04)</h3>
+
+<p>
+Draws a filled rectangle.
+</p>
+
+<pre><code>04 [x hi] [x lo] [y hi] [y lo]
+   [w hi] [w lo] [h hi] [h lo]
+   [color]
+
+04 00 0A 00 0A 00 64 00 50 30
+green rectangle at (10,10) size 100x80
+
+04 00 00 00 00 01 40 00 F0 FC
+full-screen white rectangle
+
+04 00 28 00 28 00 96 00 78 CC
+magenta rectangle at (40,40) size 150x120</code></pre>
+
+<h3>GXU_RECT_OUTLINE (0x05)</h3>
+<p>Same packet format as GXU_RECT_FILL, but only the border is drawn.</p>
+
+<pre><code>05 00 05 00 05 01 36 00 E6 FC
+white border 5 pixels from the edge
+
+05 00 0A 00 0A 01 2C 00 DC F0
+cyan outline at (10,10) size 300x220
+
+05 00 32 00 1E 00 C8 00 96 3C
+yellow outline at (50,30) size 200x150</code></pre>
+
+<h3>GXU_BLIT (0x06)</h3>
+<p>Copies an existing region of VRAM.</p>
+
+<pre><code>06 [sx hi] [sx lo] [sy hi] [sy lo]
+   [dx hi] [dx lo] [dy hi] [dy lo]
+   [w hi] [w lo] [h hi] [h lo]
+
+06 00 00 00 00 00 A0 00 78 00 50 00 3C
+
+copies the top-left 80x60 region
+to position (160,120)</code></pre>
+
+<p>Unlike the other commands, BLIT has no color byte because it simply copies pixels that already exist in VRAM.</p>
+
+<h3>GXU_TEXT (0x07)</h3>
+
+<p>Renders ASCII text using the built in bitmap font.</p>
+
+<pre><code>07 [x hi] [x lo] [y hi] [y lo]
+   [color] [N] [characters...]
+
+07 00 0A 00 0A 30 05 47 58 55 2D 31
+renders "GXU-1" at (10,10)
+
+07 00 0A 00 50 FC 07 47 52 41 50 48 49 43
+renders "GRAPHIC" at (10,80)</code></pre>
+
+<p>
+Characters are standard ASCII bytes. For example:
+<code>G = 0x47</code>,
+<code>X = 0x58</code>,
+<code>U = 0x55</code>.
+</p>
+
+<h3>GXU_SWAP (0xFF)</h3>
+
+<p>
+Swaps the front and back framebuffer, making the newly rendered frame visible.
+</p>
+
+<pre><code>FF</code></pre>
+
+<p>
+If you're drawing an entire scene, the usual sequence is:
+</p>
+
+<pre><code>GXU_CLEAR
+GXU_LINE / GXU_RECT / GXU_TEXT
+GXU_SWAP</code></pre>
+
+<p>That's effectively the GXU 1 rendering pipeline in its very simplest form:)</p>
   
   <h2>Source and docs</h2>
 
