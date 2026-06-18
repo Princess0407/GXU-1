@@ -534,6 +534,16 @@ The answer is pretty much simple. A display controller would want you to do all 
 
   <div class="divider"></div>
 
+  <p>p.s...now if you are wondering what was that behind that scenes tab in the emulator..</p>
+  
+  <p>packet anatomy - every time you run a command, the raw bytes appear color coded by field...opcode in amber, x coordinates in blue, y in green, color byte in red. Below that, the color byte gets fully broken down into bits 7-6 = blue channel, 5-4 = green, 3-2 = red, with the actual voltage each 2 bits of value produces on the R2R DAC (0V to 0.7V) and, a swatch showing you the actual color.</p>
+
+  <p>algorithm trace - runs automatically when you use GXU_LINE...it captures every single Bresenham step, shows the pseudocode with the currently executing line highlighted in amber, a live variable table (x, y, dx, dy, err, e2, sx, sy) that flashes when a value changes, and a zoomed mini canvas showing the 20x15 pixel region around where the current pixel is being placed...you get full playback controls: step forward, back, jump to start or end, or just hit play and watch it animate at 60ms per step.</p>
+
+  <p>pipeline - animates Core 0, Core 1, the FreeRTOS queue, and DMA in sequence every time a command runs, with a description of what each stage is actually doing at that particularmoment</p>
+
+  <p>the algorithm trace tab opens automatically when you run a LINE command...</p>
+  
   <h2>Source and docs</h2>
 
   <p>
