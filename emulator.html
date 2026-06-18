@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GXU 1 Emulator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/latin-modern-roman/index.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;--s1:#0f0f0f;--s2:#141414;
+  --border:#202020;--border2:#181818;
+  --text:#d2cdc2;--text2:#6a6258;--text3:#302c28;
+  --amber:#c09030;--green:#3a8850;--red:#a03030;--blue:#3870a8;
+  --hi:#e8d080;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:font-family:"Latin Modern Roman", serif;display:flex;flex-direction:column}
+
+
+.hdr{display:flex;align-items:baseline;gap:1rem;padding:.65rem 1.3rem;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.hdr-title{font-size:1.25rem;font-weight:normal;letter-spacing:.06em}
+.hdr-title b{color:var(--amber);font-weight:normal}
+.hdr-sub{font-family:"Computer Modern Typewriter",monospace;font-size:.66rem;color:var(--text2);letter-spacing:.04em}
+.tags{margin-left:auto;display:flex;gap:.5rem;align-items:center}
+.tag{font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--border);padding:1px 6px}
+
+
+.layout{
+  flex:1;display:grid;overflow:hidden;
+  grid-template:
+    "vga  ctrl" minmax(0,1fr)
+    "bts  ctrl" 190px
+    "hmap ctrl" 120px
+    / 1fr 310px;
+}
+.panel{border-right:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;display:flex;flex-direction:column}
+#ctrl{grid-area:ctrl;border-right:none;overflow-y:auto;display:block}
+#vga-p{grid-area:vga}
+#bts-p{grid-area:bts}
+#hmap-p{grid-area:hmap;border-bottom:none}
+
+.sec{font-family:"Computer Modern Typewriter",monospace;font-size:.6rem;color:var(--text2);letter-spacing:.12em;text-transform:uppercase;padding:.6rem 1.1rem .45rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.sec::after{content:'';flex:1;height:1px;background:var(--border2)}
+
+
+.vga-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden}
+canvas#screen{image-rendering:pixelated;image-rendering:crisp-edges;max-width:100%;max-height:100%;display:block}
+.scanlines{position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent,transparent 1px,rgba(0,0,0,.1) 1px,rgba(0,0,0,.1) 2px);pointer-events:none}
+.vga-meta{position:absolute;bottom:4px;right:7px;font-family:"Computer Modern Typewriter",monospace;font-size:.52rem;color:#252018;letter-spacing:.06em}
+
+
+.cp{padding:.8rem 1rem;border-bottom:1px solid var(--border)}
+.cp-sec{font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+
+
+.swatches{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px}
+.sw{width:17px;height:17px;cursor:pointer;border:1.5px solid transparent;transition:border-color .1s}
+.sw.on{border-color:var(--text)}
+.sw-name{font-family:"Computer Modern Typewriter",monospace;font-size:.56rem;color:var(--text2)}
+
+/* ISA buttons */
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.ibtn{background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;padding:5px 7px;cursor:pointer;text-align:left;line-height:1.45;transition:background .08s}
+.ibtn:hover{background:var(--s1);border-color:var(--text3)}
+.ibtn:active{background:#000}
+.ibtn .op{color:var(--amber);display:block;font-size:.52rem}
+.t-row{display:flex;gap:4px;margin-top:4px}
+.t-field{flex:1;background:#000;border:1px solid var(--border);color:var(--text);font-family:"Computer Modern Typewriter",monospace;font-size:.6rem;padding:4px 6px;outline:none;min-width:0}
+.t-field:focus{border-color:var(--text3)}
+.t-field::placeholder{color:var(--text3)}
+
+
+.hex-field{width:100%;display:block;background:#000;border:1px solid var(--border);color:var(--amber);font-family:"Computer Modern Typewriter",monospace;font-size:.66rem;padding:6px 8px;outline:none;letter-spacing:.1em;margin-bottom:4px}
+.hex-field:focus{border-color:var(--text3)}
+.hex-field::placeholder{color:var(--text3);letter-spacing:.04em}
+.exec-btn{width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text2);font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;padding:5px;cursor:pointer;letter-spacing:.06em;transition:all .08s}
+.exec-btn:hover{color:var(--text);border-color:var(--text3)}
+.logbox{height:82px;overflow-y:auto;background:#000;border:1px solid var(--border2);padding:4px 7px;margin-top:5px;font-family:"Computer Modern Typewriter",monospace;font-size:.56rem;line-height:1.75}
+.le{color:var(--text3)}.le.ok{color:var(--green)}.le.err{color:var(--red)}.le.info{color:var(--text2)}
+
+
+.trow{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border2)}
+.trow:last-child{border:none}
+.tkey{font-family:"Computer Modern Typewriter",monospace;font-size:.56rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase}
+.tval{font-family:"Computer Modern Typewriter",monospace;font-size:.75rem;color:var(--text)}
+.tval.hot{color:var(--amber)}
+
+
+.ref-table{width:100%;border-collapse:collapse;font-family:"Computer Modern Typewriter",monospace;font-size:.56rem}
+.ref-table .rule td{height:1px;background:var(--border);padding:0;line-height:0}
+.ref-table th{font-weight:normal;color:var(--text2);text-align:left;padding:3px 6px 3px 0;letter-spacing:.07em;text-transform:uppercase}
+.ref-table td{padding:2px 6px 2px 0;color:var(--text2);vertical-align:top;line-height:1.6}
+.ref-table td:first-child{color:var(--amber)}
+.ref-table td:nth-child(2){color:var(--text)}
+.ref-note{font-family:"Computer Modern Typewriter",monospace;font-size:.53rem;color:var(--text3);margin-top:5px;line-height:1.8}
+
+
+.hm-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:.5rem 1.1rem}
+.hm-grid{display:grid;grid-template-columns:repeat(16,1fr);gap:2px}
+.hm-cell{aspect-ratio:1;background:#0d0d0d}
+.hm-leg{display:flex;gap:9px;margin-top:6px;font-family:"Computer Modern Typewriter",monospace;font-size:.54rem;color:var(--text2);align-items:center}
+.hm-dot{width:7px;height:7px;flex-shrink:0}
+
+#bts-p{display:flex;flex-direction:column}
+.bts-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.btab{background:none;border:none;border-right:1px solid var(--border);color:var(--text2);font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;padding:.35rem .9rem;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;transition:all .1s}
+.btab:hover{color:var(--text)}
+.btab.on{color:var(--amber);background:var(--s2)}
+.bts-body{flex:1;overflow:hidden;display:flex}
+
+
+.tab-pane{display:none;width:100%;height:100%}
+.tab-pane.on{display:flex}
+
+
+#tab-packet{padding:.6rem 1.1rem;flex-direction:column;gap:.5rem;overflow:hidden}
+.pkt-bytes{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end}
+.pb{display:flex;flex-direction:column;align-items:center;gap:3px}
+.pb-byte{font-family:"Computer Modern Typewriter",monospace;font-size:.68rem;padding:3px 6px;background:var(--s2);border:1px solid var(--border)}
+.pb-label{font-family:"Computer Modern Typewriter",monospace;font-size:.5rem;color:var(--text2);letter-spacing:.06em;text-align:center}
+.pb.op .pb-byte{border-color:var(--amber);color:var(--amber)}
+.pb.x .pb-byte{border-color:var(--blue);color:var(--blue)}
+.pb.y .pb-byte{border-color:var(--green);color:var(--green)}
+.pb.col .pb-byte{border-color:var(--red);color:var(--red)}
+.pb.w .pb-byte,.pb.h .pb-byte{border-color:#8060a0;color:#8060a0}
+.pkt-empty{font-family:"Computer Modern Typewriter",monospace;font-size:.6rem;color:var(--text3);padding:.2rem 0}
+.color-bits{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cbit-wrap{display:flex;flex-direction:column;gap:3px}
+.cbit-label{font-family:"Computer Modern Typewriter",monospace;font-size:.5rem;color:var(--text2);letter-spacing:.06em}
+.cbit-boxes{display:flex;gap:2px}
+.cbit{width:14px;height:14px;border:1px solid var(--border);font-family:"Computer Modern Typewriter",monospace;font-size:.5rem;display:flex;align-items:center;justify-content:center}
+.cbit.hi{background:var(--s2)}
+.color-swatch-big{width:28px;height:28px;border:1px solid var(--border);flex-shrink:0}
+.color-volts{font-family:"Computer Modern Typewriter",monospace;font-size:.56rem;color:var(--text2);line-height:1.7}
+
+
+#tab-algo{flex-direction:row;gap:0;overflow:hidden}
+.algo-left{flex:0 0 48%;border-right:1px solid var(--border2);padding:.6rem .9rem;overflow:hidden;display:flex;flex-direction:column;gap:.5rem}
+.algo-right{flex:1;padding:.6rem .9rem;overflow:hidden;display:flex;flex-direction:column;gap:.5rem}
+.algo-title{font-family:"Computer Modern Typewriter",monospace;font-size:.56rem;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.2rem}
+
+
+.pseudo{font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;line-height:1.8;color:var(--text2)}
+.pseudo .pline{padding:1px 4px;border-left:2px solid transparent;transition:all .15s}
+.pseudo .pline.active{color:var(--hi);border-left-color:var(--amber);background:rgba(200,150,40,.06)}
+.pseudo .pline .kw{color:var(--amber)}
+.pseudo .pline .fn{color:var(--green)}
+.pseudo .pline .var{color:var(--blue)}
+.pseudo .pline .num{color:#a070d0}
+
+
+.var-grid{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-family:"Computer Modern Typewriter",monospace;font-size:.58rem}
+.vk{color:var(--text2)}
+.vv{color:var(--text);font-size:.62rem}
+.vv.changed{color:var(--hi)}
+
+.step-ctrl{display:flex;align-items:center;gap:5px;margin-top:auto}
+.sctrl-btn{background:var(--s2);border:1px solid var(--border);color:var(--text2);font-family:"Computer Modern Typewriter",monospace;font-size:.6rem;padding:3px 8px;cursor:pointer;transition:all .08s}
+.sctrl-btn:hover{color:var(--text);border-color:var(--text3)}
+.sctrl-btn:disabled{opacity:.3;cursor:default}
+.step-counter{font-family:"Computer Modern Typewriter",monospace;font-size:.58rem;color:var(--text2);margin-left:auto}
+
+.mini-canvas-wrap{border:1px solid var(--border2);background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+canvas#mini-screen{image-rendering:pixelated;image-rendering:crisp-edges;display:block;width:100%;height:100%}
+.mini-label{font-family:"Computer Modern Typewriter",monospace;font-size:.5rem;color:var(--text3);letter-spacing:.06em;margin-bottom:2px}
+
+#tab-pipe{padding:.7rem 1.1rem;flex-direction:column;justify-content:center;gap:.8rem}
+.pipe-row{display:flex;align-items:center;gap:0}
+.pipe-node{background:var(--s2);border:1px solid var(--border);padding:.35rem .7rem;display:flex;flex-direction:column;gap:2px;flex-shrink:0;transition:border-color .2s,background .2s}
+.pipe-node.active{border-color:var(--amber);background:rgba(192,144,48,.08)}
+.pn-label{font-family:"Computer Modern Typewriter",monospace;font-size:.6rem;color:var(--text);letter-spacing:.04em}
+.pn-sub{font-family:"Computer Modern Typewriter",monospace;font-size:.5rem;color:var(--text2)}
+.pipe-node.active .pn-label{color:var(--amber)}
+.pipe-arrow{font-family:"Computer Modern Typewriter",monospace;font-size:.6rem;color:var(--text3);padding:0 5px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:1px}
+.pipe-arrow .pa-label{font-size:.48rem;color:var(--text3);letter-spacing:.04em}
+.pipe-arrow.active .pa-label{color:var(--amber)}
+.pipe-arrow.active{color:var(--amber)}
+.pipe-desc{font-family:"Computer Modern Typewriter",monospace;font-size:.56rem;color:var(--text2);line-height:1.7;border-top:1px solid var(--border2);padding-top:.5rem}
+.pipe-desc span{color:var(--amber)}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border)}
+
+@media(max-width:700px){
+  html,body{height:auto;overflow:auto}
+  .layout{grid-template:"vga" auto "bts" auto "hmap" auto "ctrl" auto / 1fr}
+  #ctrl{grid-area:ctrl}
+  #bts-p{grid-area:bts;height:220px}
+  #hmap-p{grid-area:hmap;height:140px}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div>
+    <span class="hdr-title">GXU-<b>1</b></span>
+    <span class="hdr-sub" style="margin-left:.8rem">Graphics Execution Unit &mdash; software emulator</span>
+  </div>
+  <div class="tags">
+    <span class="tag">320&times;240</span>
+    <span class="tag">8-opcode ISA</span>
+    <span class="tag">rev 1</span>
+  </div>
+</header>
+
+<div class="layout">
+
+
+<div class="panel" id="vga-p">
+  <div class="sec">&#167;&ensp;1&ensp;&ensp;vga output &middot; core 1 rasterizer</div>
+  <div class="vga-wrap">
+    <canvas id="screen" width="320" height="240"></canvas>
+    <div class="scanlines"></div>
+    <div class="vga-meta">320&times;240 &middot; 60Hz &middot; 6-bit &middot; R2R DAC</div>
+  </div>
+</div>
+
+
+<div class="panel" id="bts-p">
+  <div class="sec">&#167;&ensp;2&ensp;&ensp;behind the scenes</div>
+  <div class="bts-tabs">
+    <button class="btab on" onclick="showTab('packet')">packet anatomy</button>
+    <button class="btab" onclick="showTab('algo')">algorithm trace</button>
+    <button class="btab" onclick="showTab('pipe')">pipeline</button>
+  </div>
+  <div class="bts-body">
+
+    <div class="tab-pane on" id="tab-packet">
+      <div class="pkt-empty" id="pkt-empty">no packet executed yet &mdash; run a command above</div>
+      <div id="pkt-bytes" class="pkt-bytes" style="display:none"></div>
+      <div id="color-decode" style="display:none">
+        <div class="algo-title">color byte breakdown</div>
+        <div class="color-bits">
+          <div class="cbit-wrap">
+            <div class="cbit-label">blue [7:6]</div>
+            <div class="cbit-boxes" id="cb-blue"></div>
+          </div>
+          <div class="cbit-wrap">
+            <div class="cbit-label">green [5:4]</div>
+            <div class="cbit-boxes" id="cb-green"></div>
+          </div>
+          <div class="cbit-wrap">
+            <div class="cbit-label">red [3:2]</div>
+            <div class="cbit-boxes" id="cb-red"></div>
+          </div>
+          <div class="cbit-wrap">
+            <div class="cbit-label">unused [1:0]</div>
+            <div class="cbit-boxes" id="cb-xx"></div>
+          </div>
+          <div class="color-swatch-big" id="cb-swatch"></div>
+          <div class="color-volts" id="cb-volts"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-algo">
+      <div class="algo-left">
+        <div class="algo-title" id="algo-title">run a LINE command to see the trace</div>
+        <div class="pseudo" id="pseudo"></div>
+        <div class="step-ctrl">
+          <button class="sctrl-btn" id="btn-first" onclick="stepTo(0)" disabled>|&lt;</button>
+          <button class="sctrl-btn" id="btn-prev"  onclick="stepBy(-1)" disabled>&lt;</button>
+          <button class="sctrl-btn" id="btn-play"  onclick="togglePlay()" disabled>play</button>
+          <button class="sctrl-btn" id="btn-next"  onclick="stepBy(1)"  disabled>&gt;</button>
+          <button class="sctrl-btn" id="btn-last"  onclick="stepTo(steps.length-1)" disabled>&gt;|</button>
+          <span class="step-counter" id="step-counter"></span>
+        </div>
+      </div>
+      <div class="algo-right">
+        <div>
+          <div class="algo-title">variables</div>
+          <div class="var-grid" id="var-grid"></div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <div class="mini-label">zoomed view &middot; 4px/cell</div>
+          <div class="mini-canvas-wrap" style="flex:1">
+            <canvas id="mini-screen" width="80" height="60"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-pipe">
+      <div class="pipe-row" id="pipe-row">
+        <div class="pipe-node" id="pn-browser">
+          <div class="pn-label">Browser</div>
+          <div class="pn-sub">ISA command panel</div>
+        </div>
+        <div class="pipe-arrow" id="pa-wifi">
+          <span>&rarr;</span>
+          <span class="pa-label">WiFi</span>
+        </div>
+        <div class="pipe-node" id="pn-core0">
+          <div class="pn-label">Core 0</div>
+          <div class="pn-sub">ISA decoder</div>
+        </div>
+        <div class="pipe-arrow" id="pa-queue">
+          <span>&rarr;</span>
+          <span class="pa-label">queue</span>
+        </div>
+        <div class="pipe-node" id="pn-core1">
+          <div class="pn-label">Core 1</div>
+          <div class="pn-sub">rasterizer</div>
+        </div>
+        <div class="pipe-arrow" id="pa-dma">
+          <span>&rarr;</span>
+          <span class="pa-label">DMA</span>
+        </div>
+        <div class="pipe-node" id="pn-vga">
+          <div class="pn-label">VGA</div>
+          <div class="pn-sub">320&times;240</div>
+        </div>
+      </div>
+      <div class="pipe-desc" id="pipe-desc">
+        waiting for command &mdash; send an ISA packet to watch it flow through the pipeline
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="panel" id="hmap-p">
+  <div class="sec">&#167;&ensp;3&ensp;&ensp;vram tile heatmap &middot; 16&times;12</div>
+  <div class="hm-wrap">
+    <div class="hm-grid" id="hm-grid"></div>
+    <div class="hm-leg">
+      <div class="hm-dot" style="background:#0d0d0d"></div>cold
+      <div class="hm-dot" style="background:#1a2e60"></div>
+      <div class="hm-dot" style="background:#1a5e40"></div>warm
+      <div class="hm-dot" style="background:#7a3c00"></div>
+      <div class="hm-dot" style="background:#9a2828"></div>hot
+    </div>
+  </div>
+</div>
+
+<div id="ctrl">
+  <div class="cp">
+    <div class="cp-sec">color register</div>
+    <div class="swatches" id="swatches"></div>
+    <div class="sw-name" id="sw-name">0x0C &mdash; red</div>
+  </div>
+  <div class="cp">
+    <div class="cp-sec">isa command panel</div>
+    <div class="btn-grid">
+      <button class="ibtn" onclick="cmdClear()"><span class="op">0x01</span>GXU_CLEAR</button>
+      <button class="ibtn" onclick="cmdPixel()"><span class="op">0x02</span>GXU_PIXEL</button>
+      <button class="ibtn" onclick="cmdLine()"><span class="op">0x03</span>GXU_LINE</button>
+      <button class="ibtn" onclick="cmdRectFill()"><span class="op">0x04</span>GXU_RECT_FILL</button>
+      <button class="ibtn" onclick="cmdRectOutline()"><span class="op">0x05</span>GXU_RECT_OUTLINE</button>
+      <button class="ibtn" onclick="cmdBlit()"><span class="op">0x06</span>GXU_BLIT</button>
+      <button class="ibtn" onclick="cmdSwap()"><span class="op">0xFF</span>GXU_SWAP</button>
+      <button class="ibtn" onclick="cmdReset()"><span class="op">---</span>RESET</button>
+    </div>
+    <div class="t-row">
+      <input class="t-field" id="text-inp" placeholder="string for GXU_TEXT..." maxlength="36"/>
+      <button class="ibtn" style="flex-shrink:0" onclick="cmdText()"><span class="op">0x07</span>TEXT</button>
+    </div>
+  </div>
+  <div class="cp">
+    <div class="cp-sec">raw hex packet</div>
+    <input class="hex-field" id="hex-inp" placeholder="03 00 00 00 F0 01 3F 00 EF 0C"/>
+    <button class="exec-btn" onclick="execHex()">execute packet &rarr;</button>
+    <div class="logbox" id="log"></div>
+  </div>
+  <div class="cp">
+    <div class="cp-sec">telemetry</div>
+    <div class="trow"><span class="tkey">frame rate</span><span class="tval" id="t-fps">0 fps</span></div>
+    <div class="trow"><span class="tkey">pixels written</span><span class="tval" id="t-px">0</span></div>
+    <div class="trow"><span class="tkey">throughput</span><span class="tval" id="t-tp">0 px/s</span></div>
+    <div class="trow"><span class="tkey">packets rx</span><span class="tval" id="t-pkts">0</span></div>
+    <div class="trow"><span class="tkey">hottest tile</span><span class="tval hot" id="t-hot">--</span></div>
+  </div>
+  <div class="cp" style="padding-bottom:1rem">
+    <div class="cp-sec">isa reference</div>
+    <table class="ref-table">
+      <tr class="rule"><td colspan="3"></td></tr>
+      <tr><th>opcode</th><th>mnemonic</th><th>args</th></tr>
+      <tr class="rule"><td colspan="3"></td></tr>
+      <tr><td>0x01</td><td>GXU_CLEAR</td><td>color(1B)</td></tr>
+      <tr><td>0x02</td><td>GXU_PIXEL</td><td>x,y(2B) col</td></tr>
+      <tr><td>0x03</td><td>GXU_LINE</td><td>x0,y0,x1,y1(2B) col</td></tr>
+      <tr><td>0x04</td><td>GXU_RECT_FILL</td><td>x,y,w,h(2B) col</td></tr>
+      <tr><td>0x05</td><td>GXU_RECT_OUTLINE</td><td>x,y,w,h(2B) col</td></tr>
+      <tr><td>0x06</td><td>GXU_BLIT</td><td>sx,sy,dx,dy,w,h(2B)</td></tr>
+      <tr><td>0x07</td><td>GXU_TEXT</td><td>x,y,col,N,chars</td></tr>
+      <tr><td>0xFF</td><td>GXU_SWAP</td><td>--</td></tr>
+      <tr class="rule"><td colspan="3"></td></tr>
+    </table>
+    <div class="ref-note">
+      color byte: [B1 B0 G1 G0 R1 R0 xx xx]<br>
+      coords: 16-bit big-endian unsigned<br>
+      example: 03 00 00 00 F0 01 3F 00 EF 0C
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+
+const W=320,H=240;
+const VRAM=new Uint8Array(W*H);
+const VRAM_B=new Uint8Array(W*H);
+const heatmap=new Uint32Array(192);
+let drawTarget=VRAM;
+let pixTotal=0,pxBucket=0,pxLastSec=0;
+let pkts=0,frames=0,fps=0;
+let lastSec=performance.now();
+let selColor=0x0C;
+
+const canvas=document.getElementById('screen');
+const ctx=canvas.getContext('2d');
+const miniCanvas=document.getElementById('mini-screen');
+const mctx=miniCanvas.getContext('2d');
+  
+const F={
+  ' ':[0x00,0x00,0x00,0x00,0x00],'!':[0x00,0x00,0x5F,0x00,0x00],
+  '"':[0x00,0x07,0x00,0x07,0x00],'#':[0x14,0x7F,0x14,0x7F,0x14],
+  '$':[0x24,0x2A,0x7F,0x2A,0x12],'%':[0x23,0x13,0x08,0x64,0x62],
+  '&':[0x36,0x49,0x55,0x22,0x50],"'":[0x00,0x05,0x03,0x00,0x00],
+  '(':[0x00,0x1C,0x22,0x41,0x00],')':[0x00,0x41,0x22,0x1C,0x00],
+  '*':[0x14,0x08,0x3E,0x08,0x14],'+':[0x08,0x08,0x3E,0x08,0x08],
+  ',':[0x00,0x50,0x30,0x00,0x00],'-':[0x08,0x08,0x08,0x08,0x08],
+  '.':[0x00,0x60,0x60,0x00,0x00],'/':[0x20,0x10,0x08,0x04,0x02],
+  '0':[0x3E,0x51,0x49,0x45,0x3E],'1':[0x00,0x42,0x7F,0x40,0x00],
+  '2':[0x42,0x61,0x51,0x49,0x46],'3':[0x21,0x41,0x45,0x4B,0x31],
+  '4':[0x18,0x14,0x12,0x7F,0x10],'5':[0x27,0x45,0x45,0x45,0x39],
+  '6':[0x3C,0x4A,0x49,0x49,0x30],'7':[0x01,0x71,0x09,0x05,0x03],
+  '8':[0x36,0x49,0x49,0x49,0x36],'9':[0x06,0x49,0x49,0x29,0x1E],
+  ':':[0x00,0x36,0x36,0x00,0x00],';':[0x00,0x56,0x36,0x00,0x00],
+  '<':[0x08,0x14,0x22,0x41,0x00],'=':[0x14,0x14,0x14,0x14,0x14],
+  '>':[0x00,0x41,0x22,0x14,0x08],'?':[0x02,0x01,0x51,0x09,0x06],
+  '@':[0x32,0x49,0x59,0x51,0x3E],
+  'A':[0x7E,0x11,0x11,0x11,0x7E],'B':[0x7F,0x49,0x49,0x49,0x36],
+  'C':[0x3E,0x41,0x41,0x41,0x22],'D':[0x7F,0x41,0x41,0x22,0x1C],
+  'E':[0x7F,0x49,0x49,0x49,0x41],'F':[0x7F,0x09,0x09,0x09,0x01],
+  'G':[0x3E,0x41,0x49,0x49,0x7A],'H':[0x7F,0x08,0x08,0x08,0x7F],
+  'I':[0x00,0x41,0x7F,0x41,0x00],'J':[0x20,0x40,0x41,0x3F,0x01],
+  'K':[0x7F,0x08,0x14,0x22,0x41],'L':[0x7F,0x40,0x40,0x40,0x40],
+  'M':[0x7F,0x02,0x0C,0x02,0x7F],'N':[0x7F,0x04,0x08,0x10,0x7F],
+  'O':[0x3E,0x41,0x41,0x41,0x3E],'P':[0x7F,0x09,0x09,0x09,0x06],
+  'Q':[0x3E,0x41,0x51,0x21,0x5E],'R':[0x7F,0x09,0x19,0x29,0x46],
+  'S':[0x46,0x49,0x49,0x49,0x31],'T':[0x01,0x01,0x7F,0x01,0x01],
+  'U':[0x3F,0x40,0x40,0x40,0x3F],'V':[0x1F,0x20,0x40,0x20,0x1F],
+  'W':[0x3F,0x40,0x38,0x40,0x3F],'X':[0x63,0x14,0x08,0x14,0x63],
+  'Y':[0x07,0x08,0x70,0x08,0x07],'Z':[0x61,0x51,0x49,0x45,0x43],
+  'a':[0x20,0x54,0x54,0x54,0x78],'b':[0x7F,0x48,0x44,0x44,0x38],
+  'c':[0x38,0x44,0x44,0x44,0x20],'d':[0x38,0x44,0x44,0x48,0x7F],
+  'e':[0x38,0x54,0x54,0x54,0x18],'f':[0x08,0x7E,0x09,0x01,0x02],
+  'g':[0x0C,0x52,0x52,0x52,0x3E],'h':[0x7F,0x08,0x04,0x04,0x78],
+  'i':[0x00,0x44,0x7D,0x40,0x00],'j':[0x20,0x40,0x44,0x3D,0x00],
+  'k':[0x7F,0x10,0x28,0x44,0x00],'l':[0x00,0x41,0x7F,0x40,0x00],
+  'm':[0x7C,0x04,0x18,0x04,0x78],'n':[0x7C,0x08,0x04,0x04,0x78],
+  'o':[0x38,0x44,0x44,0x44,0x38],'p':[0x7C,0x14,0x14,0x14,0x08],
+  'q':[0x08,0x14,0x14,0x18,0x7C],'r':[0x7C,0x08,0x04,0x04,0x08],
+  's':[0x48,0x54,0x54,0x54,0x20],'t':[0x04,0x3F,0x44,0x40,0x20],
+  'u':[0x3C,0x40,0x40,0x20,0x7C],'v':[0x1C,0x20,0x40,0x20,0x1C],
+  'w':[0x3C,0x40,0x30,0x40,0x3C],'x':[0x44,0x28,0x10,0x28,0x44],
+  'y':[0x0C,0x50,0x50,0x50,0x3C],'z':[0x44,0x64,0x54,0x4C,0x44],
+};
+
+
+const PAL=[
+  {css:'#000000',b:0x00,name:'black'},{css:'#FF0000',b:0x0C,name:'red'},
+  {css:'#00CC00',b:0x30,name:'green'},{css:'#0033FF',b:0xC0,name:'blue'},
+  {css:'#FFFF00',b:0x3C,name:'yellow'},{css:'#00FFFF',b:0xCC,name:'cyan'},
+  {css:'#FF00FF',b:0xF0,name:'magenta'},{css:'#FFFFFF',b:0xFC,name:'white'},
+  {css:'#880000',b:0x08,name:'dk red'},{css:'#005500',b:0x10,name:'dk green'},
+  {css:'#000088',b:0x40,name:'dk blue'},{css:'#888888',b:0xA8,name:'gray'},
+];
+const swEl=document.getElementById('swatches');
+PAL.forEach(c=>{
+  const d=document.createElement('div');
+  d.className='sw'+(c.b===selColor?' on':'');
+  d.style.background=c.css;
+  d.title=c.name+' 0x'+c.b.toString(16).toUpperCase().padStart(2,'0');
+  d.onclick=()=>{
+    document.querySelectorAll('.sw').forEach(s=>s.classList.remove('on'));
+    d.classList.add('on');selColor=c.b;
+    document.getElementById('sw-name').textContent='0x'+c.b.toString(16).toUpperCase().padStart(2,'0')+' \u2014 '+c.name;
+  };
+  swEl.appendChild(d);
+});
+
+
+const hmEl=document.getElementById('hm-grid');
+for(let i=0;i<192;i++){const c=document.createElement('div');c.className='hm-cell';hmEl.appendChild(c);}
+
+function b2rgb(b){return[((b>>2)&3)*85,((b>>4)&3)*85,((b>>6)&3)*85]}
+function setpx(x,y,col){
+  if(x<0||x>=W||y<0||y>=H)return;
+  drawTarget[y*W+x]=col;
+  const ti=Math.floor(y/20)*16+Math.floor(x/20);
+  if(ti<192)heatmap[ti]++;
+  pixTotal++;pxBucket++;
+}
+function gxu_clear(col){drawTarget.fill(col);heatmap.fill(0);pixTotal+=W*H;pxBucket+=W*H;}
+function gxu_pixel(x,y,col){setpx(x,y,col);}
+function gxu_rect_fill(x,y,w,h,col){for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)setpx(c,r,col);}
+function gxu_rect_outline(x,y,w,h,col){
+  for(let i=x;i<x+w;i++){setpx(i,y,col);setpx(i,y+h-1,col);}
+  for(let i=y;i<y+h;i++){setpx(x,i,col);setpx(x+w-1,i,col);}
+}
+function gxu_blit(sx,sy,dx,dy,w,h){
+  const tmp=new Uint8Array(w*h);
+  for(let r=0;r<h;r++)for(let c=0;c<w;c++){const px=sx+c,py=sy+r;if(px>=0&&px<W&&py>=0&&py<H)tmp[r*w+c]=drawTarget[py*W+px];}
+  for(let r=0;r<h;r++)for(let c=0;c<w;c++)setpx(dx+c,dy+r,tmp[r*w+c]);
+}
+function gxu_text(x,y,col,str){
+  let cx=x;
+  for(const ch of str){
+    const g=F[ch]||F[' '];
+    for(let col2=0;col2<5;col2++)for(let row=0;row<7;row++)if(g[col2]&(1<<row))setpx(cx+col2,y+row,col);
+    cx+=6;if(cx>=W-5)break;
+  }
+}
+function gxu_swap(){VRAM_B.set(drawTarget);}
+
+let steps=[];
+let stepIdx=0;
+let playing=false;
+let playTimer=null;
+
+function gxu_line_traced(x0,y0,x1,y1,col){
+  steps=[];
+  let ox0=x0,oy0=y0;
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
+  let sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy;
+  for(let g=0;g<1200;g++){
+    const e2=2*err;
+    steps.push({
+      x:x0,y:y0,dx,dy,err,e2,sx,sy,
+      xAdvance:e2>-dy,yAdvance:e2<dx,
+      done:x0===x1&&y0===y1
+    });
+    setpx(x0,y0,col);
+    if(x0===x1&&y0===y1)break;
+    if(e2>-dy){err-=dy;x0+=sx;}
+    if(e2<dx){err+=dx;y0+=sy;}
+  }
+
+  stepIdx=0;
+  playing=false;
+  document.getElementById('btn-first').disabled=false;
+  document.getElementById('btn-prev').disabled=false;
+  document.getElementById('btn-play').disabled=false;
+  document.getElementById('btn-next').disabled=false;
+  document.getElementById('btn-last').disabled=false;
+  document.getElementById('algo-title').textContent='bresenham line  ('+ox0+','+oy0+') \u2192 ('+x1+','+y1+')  '+steps.length+' steps';
+  renderAlgoStep(0);
+  buildPseudo();
+}
+
+const PSEUDO_LINES=[
+  {id:'p0',html:'<span class="kw">dx</span> = |x1 - x0|,  <span class="kw">dy</span> = |y1 - y0|'},
+  {id:'p1',html:'<span class="kw">sx</span> = x0 < x1 ? +1 : &minus;1'},
+  {id:'p2',html:'<span class="kw">sy</span> = y0 < y1 ? +1 : &minus;1'},
+  {id:'p3',html:'<span class="kw">err</span> = dx &minus; dy'},
+  {id:'p4',html:'<span class="kw">loop:</span>'},
+  {id:'p5',html:'&nbsp;&nbsp;<span class="fn">setPixel</span>(<span class="var">x</span>, <span class="var">y</span>, color)'},
+  {id:'p6',html:'&nbsp;&nbsp;<span class="kw">if</span> x == x1 <span class="kw">and</span> y == y1: <span class="kw">break</span>'},
+  {id:'p7',html:'&nbsp;&nbsp;<span class="var">e2</span> = 2 &times; <span class="var">err</span>'},
+  {id:'p8',html:'&nbsp;&nbsp;<span class="kw">if</span> e2 > &minus;dy:  err &minus;= dy;  x += sx'},
+  {id:'p9',html:'&nbsp;&nbsp;<span class="kw">if</span> e2 < &nbsp;dx:  err += dx;  y += sy'},
+];
+function buildPseudo(){
+  const el=document.getElementById('pseudo');
+  el.innerHTML=PSEUDO_LINES.map(l=>`<div class="pline" id="${l.id}">${l.html}</div>`).join('');
+}
+buildPseudo();
+
+function highlightLine(ids){
+  PSEUDO_LINES.forEach(l=>{
+    const el=document.getElementById(l.id);
+    if(el)el.classList.toggle('active',ids.includes(l.id));
+  });
+}
+
+let prevVars={};
+function renderAlgoStep(idx){
+  if(!steps.length)return;
+  idx=Math.max(0,Math.min(idx,steps.length-1));
+  stepIdx=idx;
+  const s=steps[idx];
+
+
+  if(idx===0) highlightLine(['p0','p1','p2','p3']);
+  else if(s.done) highlightLine(['p6']);
+  else if(s.xAdvance&&s.yAdvance) highlightLine(['p5','p7','p8','p9']);
+  else if(s.xAdvance) highlightLine(['p5','p7','p8']);
+  else if(s.yAdvance) highlightLine(['p5','p7','p9']);
+  else highlightLine(['p5','p7']);
+
+ 
+  const vars={x:s.x,y:s.y,dx:s.dx,dy:s.dy,err:s.err,e2:s.e2,sx:s.sx,sy:s.sy};
+  const vg=document.getElementById('var-grid');
+  vg.innerHTML=Object.entries(vars).map(([k,v])=>{
+    const changed=prevVars[k]!==v;
+    return `<span class="vk">${k}</span><span class="vv${changed?' changed':''}">${v}</span>`;
+  }).join('');
+  prevVars={...vars};
+
+  
+  document.getElementById('step-counter').textContent=(idx+1)+' / '+steps.length;
+
+  
+  renderMini(s.x,s.y);
+}
+
+function renderMini(cx,cy){
+  const MW=80,MH=60; 
+  const VW=20,VH=15;
+  const ox=Math.max(0,Math.min(W-VW,cx-VW/2|0));
+  const oy=Math.max(0,Math.min(H-VH,cy-VH/2|0));
+  const img=mctx.createImageData(VW,VH);
+  for(let r=0;r<VH;r++)for(let c=0;c<VW;c++){
+    const[red,g,b]=b2rgb(drawTarget[(oy+r)*W+(ox+c)]);
+    const i=(r*VW+c)*4;
+    img.data[i]=red;img.data[i+1]=g;img.data[i+2]=b;img.data[i+3]=255;
+  }
+  mctx.putImageData(img,0,0);
+
+  const px=cx-ox,py=cy-oy;
+  if(px>=0&&px<VW&&py>=0&&py<VH){
+    mctx.strokeStyle='rgba(232,208,128,0.9)';
+    mctx.lineWidth=0.5;
+    mctx.strokeRect(px,py,1,1);
+  }
+
+  miniCanvas.width=VW;miniCanvas.height=VH;
+  mctx.putImageData(img,0,0);
+  if(px>=0&&px<VW&&py>=0&&py<VH){
+    mctx.strokeStyle='rgba(232,208,128,0.85)';
+    mctx.lineWidth=0.5;mctx.strokeRect(px+0.25,py+0.25,0.5,0.5);
+  }
+}
+
+function stepBy(d){if(playing)return;renderAlgoStep(stepIdx+d);}
+function stepTo(i){if(playing)return;renderAlgoStep(i);}
+function togglePlay(){
+  if(!steps.length)return;
+  playing=!playing;
+  document.getElementById('btn-play').textContent=playing?'pause':'play';
+  if(playing){
+    if(stepIdx>=steps.length-1)stepIdx=0;
+    playTimer=setInterval(()=>{
+      if(stepIdx>=steps.length-1){clearInterval(playTimer);playing=false;document.getElementById('btn-play').textContent='play';return;}
+      renderAlgoStep(stepIdx+1);
+    },60);
+  } else {clearInterval(playTimer);}
+}
+
+const OP_NAMES={0x01:'GXU_CLEAR',0x02:'GXU_PIXEL',0x03:'GXU_LINE',0x04:'GXU_RECT_FILL',
+  0x05:'GXU_RECT_OUTLINE',0x06:'GXU_BLIT',0x07:'GXU_TEXT',0xFF:'GXU_SWAP'};
+
+function pb(byteVal,label,cls){
+  return`<div class="pb ${cls}"><div class="pb-byte">${byteVal.toString(16).toUpperCase().padStart(2,'0')}</div><div class="pb-label">${label}</div></div>`;
+}
+function pb16(hi,lo,label,cls){
+  return`<div class="pb ${cls}"><div class="pb-byte">${hi.toString(16).toUpperCase().padStart(2,'0')}</div><div class="pb-label">${label} hi</div></div>`+
+        `<div class="pb ${cls}"><div class="pb-byte">${lo.toString(16).toUpperCase().padStart(2,'0')}</div><div class="pb-label">${label} lo</div></div>`;
+}
+
+function showPacket(bytes,colorByte){
+  document.getElementById('pkt-empty').style.display='none';
+  const bEl=document.getElementById('pkt-bytes');
+  bEl.style.display='flex';
+  const op=bytes[0];
+  let html=pb(op,OP_NAMES[op]||'opcode','op');
+  if(op===0x01){
+    html+=pb(bytes[1]||0,'color','col');
+  }else if(op===0x02){
+    html+=pb16(bytes[1]||0,bytes[2]||0,'x','x');
+    html+=pb16(bytes[3]||0,bytes[4]||0,'y','y');
+    html+=pb(bytes[5]||0,'color','col');
+  }else if(op===0x03){
+    html+=pb16(bytes[1]||0,bytes[2]||0,'x0','x');
+    html+=pb16(bytes[3]||0,bytes[4]||0,'y0','y');
+    html+=pb16(bytes[5]||0,bytes[6]||0,'x1','x');
+    html+=pb16(bytes[7]||0,bytes[8]||0,'y1','y');
+    html+=pb(bytes[9]||0,'color','col');
+  }else if(op===0x04||op===0x05){
+    html+=pb16(bytes[1]||0,bytes[2]||0,'x','x');
+    html+=pb16(bytes[3]||0,bytes[4]||0,'y','y');
+    html+=pb16(bytes[5]||0,bytes[6]||0,'w','w');
+    html+=pb16(bytes[7]||0,bytes[8]||0,'h','h');
+    html+=pb(bytes[9]||0,'color','col');
+  }else if(op===0x06){
+    html+=pb16(bytes[1]||0,bytes[2]||0,'sx','x');
+    html+=pb16(bytes[3]||0,bytes[4]||0,'sy','y');
+    html+=pb16(bytes[5]||0,bytes[6]||0,'dx','x');
+    html+=pb16(bytes[7]||0,bytes[8]||0,'dy','y');
+    html+=pb16(bytes[9]||0,bytes[10]||0,'w','w');
+    html+=pb16(bytes[11]||0,bytes[12]||0,'h','h');
+  }else if(op===0xFF){
+    
+  }
+  bEl.innerHTML=html;
+  showColorDecode(colorByte!=null?colorByte:bytes[bytes.length-1]||0);
+}
+
+function showColorDecode(col){
+  const cd=document.getElementById('color-decode');
+  cd.style.display='block';
+  const B=(col>>6)&3,G=(col>>4)&3,R=(col>>2)&3,XX=col&3;
+  const volt=v=>(v*0.233).toFixed(2)+'V';
+  const bits=v=>{
+    const b1=(v>>1)&1,b0=v&1;
+    return`<div class="cbit hi">${b1}</div><div class="cbit hi">${b0}</div>`;
+  };
+  document.getElementById('cb-blue').innerHTML=bits(B);
+  document.getElementById('cb-green').innerHTML=bits(G);
+  document.getElementById('cb-red').innerHTML=bits(R);
+  document.getElementById('cb-xx').innerHTML=bits(XX);
+  const[r,g,b]=b2rgb(col);
+  document.getElementById('cb-swatch').style.background=`rgb(${r},${g},${b})`;
+  document.getElementById('cb-volts').innerHTML=
+    `R: ${R}/3 &rarr; ${volt(R)}<br>G: ${G}/3 &rarr; ${volt(G)}<br>B: ${B}/3 &rarr; ${volt(B)}`;
+}
+
+const PIPE_STAGES=[
+  {node:'pn-browser',arrow:null,     desc:'command initiated in browser dashboard'},
+  {node:'pn-core0',  arrow:'pa-wifi',desc:'<span>WiFi</span> packet received on Core 0 &mdash; ISA decoder extracts opcode and arguments'},
+  {node:'pn-core1',  arrow:'pa-queue',desc:'<span>FreeRTOS queue</span> passes GxuCmd_t struct to Core 1 &mdash; network and rendering never share CPU time'},
+  {node:'pn-vga',    arrow:'pa-dma', desc:'<span>DMA</span> hardware streams VRAM to 8 GPIO pins at 25.175 MHz &mdash; CPU is not involved in pixel output'},
+];
+let pipeTimer=null;
+function animatePipeline(opName){
+  if(pipeTimer)clearTimeout(pipeTimer);
+  // clear all
+  ['pn-browser','pn-core0','pn-core1','pn-vga','pa-wifi','pa-queue','pa-dma'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.classList.remove('active');
+  });
+  let i=0;
+  const desc=document.getElementById('pipe-desc');
+  const step=()=>{
+    if(i>0){
+      const prev=PIPE_STAGES[i-1];
+      const el=document.getElementById(prev.node);
+      if(el)el.classList.remove('active');
+      if(prev.arrow){const ae=document.getElementById(prev.arrow);if(ae)ae.classList.remove('active');}
+    }
+    if(i>=PIPE_STAGES.length){desc.innerHTML='pipeline complete &mdash; pixels on screen';return;}
+    const s=PIPE_STAGES[i];
+    const el=document.getElementById(s.node);
+    if(el)el.classList.add('active');
+    if(s.arrow){const ae=document.getElementById(s.arrow);if(ae)ae.classList.add('active');}
+    desc.innerHTML=s.desc;
+    i++;
+    pipeTimer=setTimeout(step,320);
+  };
+  desc.innerHTML='dispatching <span>'+opName+'</span> through pipeline...';
+  setTimeout(step,60);
+}
+
+
+const r=n=>Math.random()*n|0;
+function hex2(n){return n.toString(16).toUpperCase().padStart(2,'0');}
+
+function after(opName,bytes,colorByte){
+  pkts++;
+  showPacket(bytes,colorByte);
+  animatePipeline(opName);
+}
+
+function cmdClear(){
+  gxu_clear(selColor);
+  const bytes=[0x01,selColor];
+  after('GXU_CLEAR',bytes,selColor);
+  log('0x01 GXU_CLEAR  color=0x'+hex2(selColor)+'  76800px','ok');
+}
+function cmdPixel(){
+  for(let i=0;i<60;i++)gxu_pixel(r(W),r(H),selColor);
+  after('GXU_PIXEL',[0x02,0,r(W),0,r(H),selColor],selColor);
+  log('0x02 GXU_PIXEL  x60 scatter','ok');
+}
+function cmdLine(){
+  const x0=r(W),y0=r(H),x1=r(W),y1=r(H);
+  gxu_line_traced(x0,y0,x1,y1,selColor);
+  const bytes=[0x03,x0>>8,x0&0xFF,y0>>8,y0&0xFF,x1>>8,x1&0xFF,y1>>8,y1&0xFF,selColor];
+  after('GXU_LINE',bytes,selColor);
+  log('0x03 GXU_LINE  ('+x0+','+y0+') \u2192 ('+x1+','+y1+')','ok');
+  showTab('algo');
+}
+function cmdRectFill(){
+  const x=r(200),y=r(150),w=20+r(100),h=20+r(70);
+  gxu_rect_fill(x,y,w,h,selColor);
+  const bytes=[0x04,x>>8,x&0xFF,y>>8,y&0xFF,w>>8,w&0xFF,h>>8,h&0xFF,selColor];
+  after('GXU_RECT_FILL',bytes,selColor);
+  log('0x04 GXU_RECT_FILL  ('+x+','+y+') '+w+'x'+h,'ok');
+}
+function cmdRectOutline(){
+  const x=r(180),y=r(130),w=30+r(110),h=30+r(80);
+  gxu_rect_outline(x,y,w,h,selColor);
+  const bytes=[0x05,x>>8,x&0xFF,y>>8,y&0xFF,w>>8,w&0xFF,h>>8,h&0xFF,selColor];
+  after('GXU_RECT_OUTLINE',bytes,selColor);
+  log('0x05 GXU_RECT_OUTLINE  ('+x+','+y+') '+w+'x'+h,'ok');
+}
+function cmdBlit(){
+  const sx=r(160),sy=r(120),w=40+r(80),h=30+r(60),dx=r(W-w),dy=r(H-h);
+  gxu_blit(sx,sy,dx,dy,w,h);
+  const bytes=[0x06,sx>>8,sx&0xFF,sy>>8,sy&0xFF,dx>>8,dx&0xFF,dy>>8,dy&0xFF,w>>8,w&0xFF,h>>8,h&0xFF];
+  after('GXU_BLIT',bytes,null);
+  log('0x06 GXU_BLIT  src=('+sx+','+sy+') \u2192 dst=('+dx+','+dy+') '+w+'x'+h,'ok');
+}
+function cmdText(){
+  const str=document.getElementById('text-inp').value||'GXU-1';
+  const x=r(Math.max(1,W-str.length*6-6)),y=r(H-8);
+  gxu_text(x,y,selColor,str);
+  const charBytes=Array.from(str).map(c=>c.charCodeAt(0));
+  const bytes=[0x07,x>>8,x&0xFF,y>>8,y&0xFF,selColor,str.length,...charBytes];
+  after('GXU_TEXT',bytes,selColor);
+  log('0x07 GXU_TEXT  "'+str+'"  at ('+x+','+y+')','ok');
+}
+function cmdSwap(){
+  gxu_swap();
+  after('GXU_SWAP',[0xFF],null);
+  log('0xFF GXU_SWAP  buffer flip','ok');
+}
+function cmdReset(){
+  VRAM.fill(0);VRAM_B.fill(0);heatmap.fill(0);
+  pixTotal=0;pxBucket=0;pkts=0;steps=[];
+  document.getElementById('pkt-empty').style.display='';
+  document.getElementById('pkt-bytes').style.display='none';
+  document.getElementById('color-decode').style.display='none';
+  document.getElementById('algo-title').textContent='run a LINE command to see the trace';
+  document.getElementById('pseudo').innerHTML='';
+  document.getElementById('var-grid').innerHTML='';
+  document.getElementById('step-counter').textContent='';
+  ['btn-first','btn-prev','btn-play','btn-next','btn-last'].forEach(id=>document.getElementById(id).disabled=true);
+  buildPseudo();
+  log('-- RESET  VRAM cleared  counters zeroed','info');
+}
+
+function execHex(){
+  const raw=document.getElementById('hex-inp').value.trim();
+  if(!raw){log('error: empty packet','err');return;}
+  const bytes=raw.split(/[\s,]+/).map(h=>parseInt(h,16)).filter(n=>!isNaN(n));
+  if(!bytes.length){log('error: no valid hex bytes','err');return;}
+  const r16=i=>((bytes[i]||0)<<8)|(bytes[i+1]||0);
+  const op=bytes[0];
+  try{
+    switch(op){
+      case 0x01:gxu_clear(bytes[1]||0);log('0x01 GXU_CLEAR  color=0x'+hex2(bytes[1]||0),'ok');break;
+      case 0x02:gxu_pixel(r16(1),r16(3),bytes[5]||0);log('0x02 GXU_PIXEL  ('+r16(1)+','+r16(3)+')','ok');break;
+      case 0x03:
+        gxu_line_traced(r16(1),r16(3),r16(5),r16(7),bytes[9]||0);
+        log('0x03 GXU_LINE  ('+r16(1)+','+r16(3)+') \u2192 ('+r16(5)+','+r16(7)+')','ok');
+        showTab('algo');break;
+      case 0x04:gxu_rect_fill(r16(1),r16(3),r16(5),r16(7),bytes[9]||0);log('0x04 GXU_RECT_FILL','ok');break;
+      case 0x05:gxu_rect_outline(r16(1),r16(3),r16(5),r16(7),bytes[9]||0);log('0x05 GXU_RECT_OUTLINE','ok');break;
+      case 0x06:gxu_blit(r16(1),r16(3),r16(5),r16(7),r16(9),r16(11));log('0x06 GXU_BLIT','ok');break;
+      case 0x07:{const n=bytes[5]||0;const s=Array.from({length:n},(_,i)=>String.fromCharCode(bytes[6+i]||32)).join('');gxu_text(r16(1),r16(3),bytes[4]||selColor,s);log('0x07 GXU_TEXT  "'+s+'"','ok');break;}
+      case 0xFF:gxu_swap();log('0xFF GXU_SWAP','ok');break;
+      default:log('error: unknown opcode 0x'+hex2(op),'err');return;
+    }
+    after(OP_NAMES[op]||'0x'+hex2(op),bytes,null);
+  }catch(e){log('error: malformed packet  '+e.message,'err');}
+}
+document.getElementById('hex-inp').addEventListener('keydown',e=>{if(e.key==='Enter')execHex();});
+document.getElementById('text-inp').addEventListener('keydown',e=>{if(e.key==='Enter')cmdText();});
+
+
+function showTab(id){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.btab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  const tabs=document.querySelectorAll('.btab');
+  const names=['packet','algo','pipe'];
+  tabs[names.indexOf(id)]?.classList.add('on');
+}
+
+
+function log(msg,type=''){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  d.className='le'+(type?' '+type:'');
+  d.textContent='> '+msg;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+
+// render
+function heatCol(t){
+  if(t<=0)return'#0d0d0d';
+  if(t<0.25){const v=t/0.25;return'rgb('+Math.round(v*8)+','+Math.round(v*20)+','+Math.round(40+v*80)+')';}
+  if(t<0.6){const v=(t-0.25)/0.35;return'rgb('+Math.round(8+v*80)+','+Math.round(20+v*90)+','+Math.round(120-v*100)+')';}
+  const v=(t-0.6)/0.4;return'rgb('+Math.round(88+v*162)+','+Math.round(110-v*100)+',20)';
+}
+function loop(){
+  const img=ctx.createImageData(W,H);
+  for(let i=0;i<drawTarget.length;i++){
+    const[r2,g,b]=b2rgb(drawTarget[i]);
+    img.data[i*4]=r2;img.data[i*4+1]=g;img.data[i*4+2]=b;img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const cells=hmEl.children;
+  const maxH=Math.max(1,...heatmap);
+  let hotIdx=0,hotVal=0;
+  for(let i=0;i<192;i++){
+    if(heatmap[i]>hotVal){hotVal=heatmap[i];hotIdx=i;}
+    cells[i].style.background=heatCol(heatmap[i]/maxH);
+  }
+  frames++;
+  const now=performance.now();
+  if(now-lastSec>=1000){fps=frames;pxLastSec=pxBucket;frames=0;pxBucket=0;lastSec=now;}
+  document.getElementById('t-fps').textContent=fps+' fps';
+  document.getElementById('t-px').textContent=pixTotal.toLocaleString();
+  document.getElementById('t-tp').textContent=pxLastSec.toLocaleString()+' px/s';
+  document.getElementById('t-pkts').textContent=pkts;
+  if(hotVal>0){const row=Math.floor(hotIdx/16),col2=hotIdx%16;document.getElementById('t-hot').textContent='['+col2+','+row+']  '+hotVal.toLocaleString()+'w';}
+  requestAnimationFrame(loop);
+}
+
+// boot
+log('GXU 1 emulator online  --  76800 bytes VRAM initialized','info');
+log('try GXU_LINE then open the algorithm trace tab','info');
+loop();
+</script>
+</body>
+</html>
