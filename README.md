@@ -98,17 +98,14 @@ Blog post & Emulator [check this out](https://princess0407.github.io/GXU-1/)
 
 ```bash
 # clone the repo
-git clone https://github.com/yourusername/gxu1
+git clone https://github.com/Princess0407/GXU-1.git
 
 # open in Arduino IDE or PlatformIO
 # set your WiFi credentials in config.h
-# flash to ESP32-S3-DevKitC-1-N8
+# flash to ESP32 S3-DevKitC 1 N8
 # open serial monitor to get the IP address
 # navigate to that IP in a browser
 ```
 
-Dependencies: ESPAsyncWebServer, ArduinoJson, FreeRTOS (included with ESP-IDF).
+Dependencies: ESPAsyncWebServer, ArduinoJson, FreeRTOS (included with ESP IDF).
 
-## license
-
-MIT
