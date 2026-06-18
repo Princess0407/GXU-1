@@ -1,12 +1,12 @@
-# GXU-1
+# GXU 1
 
-A custom GPU co-processor built on an ESP32-S3 microcontroller, a handful of resistors, and about two days of work. It drives a real VGA monitor, executes a custom binary instruction set over WiFi, and streams live telemetry back to a React dashboard. Total component cost: under 700 rupees.
+A custom GPU co processor built on an ESP32 S3 microcontroller, a handful of resistors, and about two days of work. It drives a real VGA monitor, executes a custom binary instruction set over WiFi, and streams live telemetry back to a React dashboard. Total component cost: under 700 rupees.
 
 ## what it actually is
 
-GXU-1 stands for Graphics Execution Unit, Revision 1. The idea was simple: can you build something that genuinely deserves to be called a GPU without using any dedicated display hardware? No display controller IC, no FPGA, no HDMI driver chip. Just a microcontroller, some resistors, and a lot of careful timing.
+GXU 1 stands for Graphics Execution Unit, Revision 1. The idea was simple: can you build something that genuinely deserves to be called a GPU without using any dedicated display hardware? No display controller IC, no FPGA, no HDMI driver chip. Just a microcontroller, some resistors, and some decisions.
 
-The answer turned out to be yes. GXU-1 accepts drawing commands over WebSocket, decodes them against a defined binary ISA, rasterizes them into a framebuffer using actual algorithms like Bresenham, and streams the result to a VGA monitor at 320x240 at 60Hz using a handbuilt R-2R resistor ladder DAC. The whole thing runs on two FreeRTOS cores with a hard architectural split: Core 0 handles all network traffic, Core 1 handles all rendering. They communicate through a FreeRTOS queue. DMA handles the display output independently of both.
+The answer turned out to be yes. GXU 1 accepts drawing commands over WebSocket, decodes them against a defined binary ISA, rasterizes them into a framebuffer using actual algorithms like Bresenham, and streams the result to a VGA monitor at 320x240 at 60Hz using a handbuilt R-2R resistor ladder DAC. The whole thing runs on two FreeRTOS cores with a hard architectural split: Core 0 handles all network traffic, Core 1 handles all rendering. They communicate through a FreeRTOS queue. DMA handles the display output independently of both.
 
 ## the ISA
 
@@ -76,7 +76,7 @@ style net fill:#f0ece4,stroke:#c0bbb0,color:#1a1814
 
 The React/Vite dashboard runs in a browser on any device connected to the same WiFi. It sends binary ISA packets over a persistent WebSocket connection and receives telemetry JSON from the ESP32 every 200ms. The VRAM heatmap divides the 320x240 screen into 192 tiles (16 columns by 12 rows) and shows which regions are being written most heavily, using the same tile access frequency visualization pattern as AMD's Radeon GPU Profiler.
 
-## bill of materials
+## BOM
 
 | component | cost |
 |-----------|------|
@@ -90,9 +90,9 @@ The React/Vite dashboard runs in a browser on any device connected to the same W
 
 ## software emulator
 
-If you do not have the hardware, there is a full browser-based emulator that implements the complete ISA in JavaScript using the Canvas API. It includes the VRAM heatmap, pixel throughput telemetry, and a raw hex input where you can type ISA packets directly and watch them execute.
+If you do not have the hardware, there is a full browser based emulator that implements the complete ISA in JavaScript using the Canvas API and if you also want full blown explaination then do checkout the blog below:
 
-You can try the emulator here: [check this out](https://princess0407.github.io/GXU-1/)
+Blog post & Emulator [check this out](https://princess0407.github.io/GXU-1/)
 
 ## running the firmware
 
